@@ -1,18 +1,11 @@
-#!/usr/bin/env Rscript
-
-suppressPackageStartupMessages({
-  library(dplyr)
+library(dplyr)
   library(tidyr)
   library(ggplot2)
   library(ggridges)
   library(stringr)
   library(readr)
-})
 
-# ----------------------
-# Config / CLI
-# ----------------------
-args <- commandArgs(trailingOnly = TRUE)
+
 target_cluster <- 4
 
 data_rds_path      <- "data/generated_onset_promote_style.rds"
@@ -27,14 +20,11 @@ directory            <- "src/clustertrajectoryplots/onsetdata"
 data_all        <- readRDS(data_rds_path)
 posterior_train <- readRDS(posterior_delay_rds)
 
-# Posterior fields per your note:
-# expected_t (onset), expected_d (presence), gap_mu_star (diagnostic delay),
-# C_star (N x K, most likely cluster is which.min per your implementation)
 pp <- posterior_train$posterior.parameters
 
-expected_t_full <- pp$expected_t      # N_train x M (onset predictions)
-gap_mu_full     <- pp$gap_mu_star     # N_train x M (diagnostic delay predictions)
-C_star_full     <- pp$C_star          # N_train x K
+expected_t_full <- pp$expected_t      
+gap_mu_full     <- pp$gap_mu_star     
+C_star_full     <- pp$C_star         
 
 # ----------------------
 # Recreate the same train/test split (seed = 42, 80/20)

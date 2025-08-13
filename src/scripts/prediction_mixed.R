@@ -142,8 +142,8 @@ init_rstar_train <- matrix(runif(N_train * M, 0.01, 0.02), N_train, M)
 posterior_train <- readRDS("src/resultsmixeddatatwelth/posterior_val_delay_train.rds")
 
 # Source delay aware predictive utilities.
-source("src/functionswithdelay/ProMOTe_LTCby_delay.R")   # Probability by time.
-source("src/functionswithdelay/ProMOTe_LTCby_delay.R")    # Expected time after cut.
+source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
+source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # Expected time after cut.
 source("src/functionswithdelay/ProMOTe_Predictive_delay.R")  # Predictive density.
 source("src/functionswithdelay/ProMOTe_utility_delay.R")     # Helpers.
 

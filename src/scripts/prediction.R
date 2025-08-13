@@ -141,8 +141,8 @@ saveRDS(posterior_train, file = "src/resultsonsetdatatwelth/posterior_val_delay_
 posterior_train <- readRDS("src/resultsonsetdatatwelth/posterior_val_delay_train.rds")
 
 # Source delay aware predictive utilities.
-source("src/functionswithdelay/ProMOTe_LTCby_delay.R")   # Probability by time.
-source("src/functionswithdelay/ProMOTe_LTCby_delay.R")    # Expected time after cut.
+source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
+source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # Expected time after cut.
 source("src/functionswithdelay/ProMOTe_Predictive_delay.R")  # Predictive density.
 source("src/functionswithdelay/ProMOTe_utility_delay.R")     # Helpers.
 

@@ -64,7 +64,7 @@ base <- ggplot(shrink, aes(x = factor(var_scale), y = SR_w, fill = family)) +
   scale_y_log10() +
   coord_cartesian(ylim = ylims) +
   annotation_logticks(sides = "l") +
-  scale_fill_manual(values = pal, drop = FALSE) +   # keep all keys in legend
+  scale_fill_manual(values = pal, drop = FALSE) + # keep all keys in legend
   labs(x = "Prior variance scale (s)",
        y = "SR_w (log scale)") +
   theme_bw(base_size = 12) +
@@ -86,7 +86,7 @@ cap <- ggdraw() + draw_text(cap_text, x = 0, y = 1, hjust = 0, vjust = 1, size =
 # Stack legend over caption in the spare cell
 leg_cap <- plot_grid(ggdraw(leg), cap, ncol = 1, rel_heights = c(2, 1))
 
-# 2×2 grid: top row = Gaussian | Mixture(2); bottom row = Uniform | Legend+Caption
+# 2×2 grid: top row = Gaussian & Mixture(2); bottom row = Uniform & Legend+Caption
 p_grid <- plot_grid(
   p_g, p_m2,
   p_u, leg_cap,
