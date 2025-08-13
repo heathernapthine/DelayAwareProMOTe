@@ -13,7 +13,7 @@ library(MCMCpack)
 # Get the delay aware VB implementation.
 source("src/delay_VB.R")  # VB_gaussian_update().
 
-data_all <- readRDS("data/generated_onset_promote_style.rds")
+data_all <- readRDS("data/generated_promote_style_mixed_delays.rds")
 
 # Create an 80/20 train test split.
 set.seed(42)
@@ -43,13 +43,13 @@ subset_data <- function(data, idx) {
     birth_conds = data$birth_conds,
     male_conds = data$male_conds,
     female_conds = data$female_conds,
-    cond_list = data$cond_list
+    cond_list = data$cond_list,
 
     # Delay priors from data file are optional and can be added here.
-    # delay_prior_df  = if (!is.null(data$delay_prior_df))  data$delay_prior_df  else NULL,
-    # delay_dist_cond = if (!is.null(data$delay_dist_cond)) data$delay_dist_cond else NULL,
-    # delay_mu_cond   = if (!is.null(data$delay_mu_cond))   data$delay_mu_cond   else NULL,
-    # delay_sd_cond   = if (!is.null(data$delay_sd_cond))   data$delay_sd_cond   else NULL
+    delay_prior_df  = if (!is.null(data$delay_prior_df))  data$delay_prior_df  else NULL,
+    delay_dist_cond = if (!is.null(data$delay_dist_cond)) data$delay_dist_cond else NULL,
+    delay_mu_cond   = if (!is.null(data$delay_mu_cond))   data$delay_mu_cond   else NULL,
+    delay_sd_cond   = if (!is.null(data$delay_sd_cond))   data$delay_sd_cond   else NULL
   )
 }
 
@@ -64,42 +64,43 @@ M <- train_data$M
 cond_list <- train_data$cond_list
 
 # # Build generic delay priors for each condition.
-delay_mu <- rtruncnorm(M, a = 0, mean = 5, sd = 2)
-delay_sd <- rep(2, M)
+# delay_mu <- rtruncnorm(M, a = 0, mean = 10, sd = 0.1)
+# delay_sd <- rep(0.2, M)
+# delay_mu <- rep(10, M)#truncnorm::rtruncnorm(M, a = 0, mean = 5, sd = 1)  # Bigger mean and spread.
+# delay_sd <- rep(1, M)
+# mu0 <- delay_mu
+# sigma20 <- (delay_sd)^2
 
-mu0 <- delay_mu
-sigma20 <- (delay_sd)^2
+# More complex prior setting for mixed prior dataset.
+df <- train_data$delay_prior_df
+stopifnot(!is.null(df))
 
-# # More complex prior setting for mixed prior dataset.
-# df <- train_data$delay_prior_df
-# stopifnot(!is.null(df))
+# Align the prior rows with the condition order.
+df <- df[match(cond_list, df$condition), ]
 
-# # Align the prior rows with the condition order.
-# df <- df[match(cond_list, df$condition), ]
+# Mark rows for each family.
+is_g <- df$delay_dist == "gaussian"
+is_u <- df$delay_dist == "uniform"
+is_m <- df$delay_dist == "mixture2"
 
-# # Mark rows for each family.
-# is_g <- df$delay_dist == "gaussian"
-# is_u <- df$delay_dist == "uniform"
-# is_m <- df$delay_dist == "mixture2"
+# Allocate containers for mean and variance.
+mu0     <- numeric(M)
+sigma20 <- numeric(M)
 
-# # Allocate containers for mean and variance.
-# mu0     <- numeric(M)
-# sigma20 <- numeric(M)
+# Fill Gaussian entries.
+mu0[is_g]     <- df$delay_mu[is_g]
+sigma20[is_g] <- (df$delay_sd[is_g])^2
 
-# # Fill Gaussian entries.
-# mu0[is_g]     <- df$delay_mu[is_g]
-# sigma20[is_g] <- (df$delay_sd[is_g])^2
+# Fill Uniform entries using mean and variance.
+mu0[is_u]     <- (df$unif_a[is_u] + df$unif_b[is_u]) / 2
+sigma20[is_u] <- (df$unif_b[is_u] - df$unif_a[is_u])^2 / 12
 
-# # Fill Uniform entries using mean and variance.
-# mu0[is_u]     <- (df$unif_a[is_u] + df$unif_b[is_u]) / 2
-# sigma20[is_u] <- (df$unif_b[is_u] - df$unif_a[is_u])^2 / 12
-
-# # Collapse two component mixture to mean and variance.
-# mix_mean <- df$mix_w1*df$mix_mu1 + (1 - df$mix_w1)*df$mix_mu2
-# mix_var  <- df$mix_w1*(df$mix_sd1^2 + (df$mix_mu1 - mix_mean)^2) +
-#             (1 - df$mix_w1)*(df$mix_sd2^2 + (df$mix_mu2 - mix_mean)^2)
-# mu0[is_m]     <- mix_mean[is_m]
-# sigma20[is_m] <- mix_var[is_m]
+# Collapse two component mixture to mean and variance.
+mix_mean <- df$mix_w1*df$mix_mu1 + (1 - df$mix_w1)*df$mix_mu2
+mix_var  <- df$mix_w1*(df$mix_sd1^2 + (df$mix_mu1 - mix_mean)^2) +
+            (1 - df$mix_w1)*(df$mix_sd2^2 + (df$mix_mu2 - mix_mean)^2)
+mu0[is_m]     <- mix_mean[is_m]
+sigma20[is_m] <- mix_var[is_m]
 
 # Set weakly informative priors for global parameters.
 theta <- rep(1, K)
@@ -123,22 +124,22 @@ init_pstar_train <- matrix(runif(N_train * M, 0, 10), N_train, M)
 init_qstar_train <- matrix(runif(N_train * M, 1, 2),  N_train, M)
 init_rstar_train <- matrix(runif(N_train * M, 0.01, 0.02), N_train, M)
 
-posterior_train <- VB_gaussian_update(
-  t_obs = train_data$t, d = train_data$d, rho = train_data$rho, tau = train_data$tau,
-  iota = train_data$iota, hyperparameters = hyperparameters,
-  initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
-  initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
-  initial_rstar = init_rstar_train, N = N_train, M = M,
-  K = K, epsilon = epsilon,
-  mu0 = mu0, sigma20 = sigma20,
-  sex = train_data$sex,
-  birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
-  female_conds = train_data$female_conds, cond_list = cond_list
-)
+# posterior_train <- VB_gaussian_update(
+#   t_obs = train_data$t, d = train_data$d, rho = train_data$rho, tau = train_data$tau,
+#   iota = train_data$iota, hyperparameters = hyperparameters,
+#   initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
+#   initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
+#   initial_rstar = init_rstar_train, N = N_train, M = M,
+#   K = K, epsilon = epsilon,
+#   mu0 = mu0, sigma20 = sigma20,
+#   sex = train_data$sex,
+#   birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
+#   female_conds = train_data$female_conds, cond_list = cond_list
+# )
 
 # # Save the trained posterior.
-saveRDS(posterior_train, file = "src/resultsonsetdatatwelth/posterior_val_delay_train.rds")
-posterior_train <- readRDS("src/resultsonsetdatatwelth/posterior_val_delay_train.rds")
+# saveRDS(posterior_train, file = "src/resultsmixeddatatwelth/posterior_val_delay_train.rds")
+posterior_train <- readRDS("src/resultsmixeddatatwelth/posterior_val_delay_train.rds")
 
 # Source delay aware predictive utilities.
 source("src/functionswithdelay/ProMOTe_LTCby_delay.R")   # Probability by time.
@@ -384,21 +385,21 @@ init_pstar_train <- matrix(runif(N_train * M, 0, 10), N_train, M)
 init_qstar_train <- matrix(runif(N_train * M, 1, 2),  N_train, M)
 init_rstar_train <- matrix(runif(N_train * M, 0.01, 0.02), N_train, M)
 
-fit_nd <- VB_gaussian_update(
-  d = train_data$d, t = train_data$t, rho = train_data$rho, tau = train_data$tau, iota = train_data$iota,
-  hyperparameters = hyperparameters,
-  initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
-  initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
-  initial_rstar = init_rstar_train,
-  N = N_train, M = M, K = K, epsilon = epsilon,
-  sex = train_data$sex,
-  birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
-  female_conds = train_data$female_conds, cond_list = cond_list
-)
+# fit_nd <- VB_gaussian_update(
+#   d = train_data$d, t = train_data$t, rho = train_data$rho, tau = train_data$tau, iota = train_data$iota,
+#   hyperparameters = hyperparameters,
+#   initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
+#   initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
+#   initial_rstar = init_rstar_train,
+#   N = N_train, M = M, K = K, epsilon = epsilon,
+#   sex = train_data$sex,
+#   birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
+#   female_conds = train_data$female_conds, cond_list = cond_list
+# )
 
 # # Save the baseline posterior to disk.
-saveRDS(fit_nd, file = "src/resultsonsetdatatwelth/posterior_val_no_delay_train.rds")
-fit_nd <- readRDS("src/resultsonsetdatatwelth/posterior_val_no_delay_train.rds")
+# saveRDS(fit_nd, file = "src/resultsmixeddatatwelth/posterior_val_no_delay_train.rds")
+fit_nd <- readRDS("src/resultsmixeddatatwelth/posterior_val_no_delay_train.rds")
 
 # Gather posterior parameters for baseline prediction.
 pp <- fit_nd$posterior.parameters

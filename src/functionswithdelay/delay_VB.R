@@ -82,7 +82,7 @@ VB_gaussian_update <- function(
                             sum(alpha_hyper * log(beta_hyper)) - sum(lgamma(alpha_hyper))
 
 
-  while (param_difference > 0.1 && n_steps < 75) {
+  while (param_difference > 0.1 && n_steps < 70) {
     n_steps <- n_steps + 1
 
     # Update gap moments under truncated normal and derive onset time.

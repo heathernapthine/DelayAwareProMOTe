@@ -11,15 +11,13 @@ library(MCMCpack)
 library(purrr)
 library(stringr)
 
-source("src/delay_VB.R")                  # VB_gaussian_update(), VB_infer_with_frozen_globals()
-source("src/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T()
-source("src/ProMOTe_LTCt_delay.R")       # expected_LTHC_t_after_tau()
-source("src/ProMOTe_Predictive_delay.R") # VB_gaussian_predictive_density()
-source("src/ProMOTe_utility_delay.R")    # helpers
+source("src/delay_VB.R")                 # VB_gaussian_update()
+source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
+source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # expected_LTHC_t_after_tau()
+source("src/functionswithdelay/ProMOTe_Predictive_delay.R") # VB_gaussian_predictive_density()
+source("src/functionswithdelay/ProMOTe_utility_delay.R")    # helpers
 
-# -------------------------
 # LOAD DATA & TRAIN/TEST
-# -------------------------
 data_all <- readRDS("data/generated_promote_style_mixed_delays.rds")
 
 n_total <- nrow(data_all$d)
@@ -49,9 +47,7 @@ subset_data <- function(data, idx) {
 train_data <- subset_data(data_all, train_idx)
 test_data  <- subset_data(data_all, test_idx)
 
-# -------------------------
 # SHARED CONFIG / PRIORS
-# -------------------------
 K <- 10
 epsilon <- 0.1
 M <- train_data$M
@@ -80,7 +76,7 @@ mix_var  <- df$mix_w1*(df$mix_sd1^2 + (df$mix_mu1 - mix_mean)^2) +
 mu0_base[is_m]     <- mix_mean[is_m]
 sigma20_base[is_m] <- mix_var[is_m]
 
-# robust length bins (avoid non-unique breaks)
+
 make_length_bins <- function(x) {
   q <- quantile(x, probs = c(0, .33, .66, 1), na.rm = TRUE)
   if (anyDuplicated(q)) {
@@ -95,7 +91,7 @@ make_length_bins <- function(x) {
   cut(x, breaks = q, include.lowest = TRUE, labels = c("short","medium","long"))
 }
 
-# robust tightness bins for sigma20 (smaller = tighter prior)
+# Tightness bins for sigma20 (smaller = tighter prior)
 make_tight_bins <- function(x) {
   q <- quantile(x, probs = c(0, .33, .66, 1), na.rm = TRUE)
   if (anyDuplicated(q)) {
@@ -107,7 +103,7 @@ make_tight_bins <- function(x) {
     q[1] <- q[1] - 1e-9
     q[4] <- q[4] + 1e-9
   }
-  # labels order: tight (small var) -> mid -> loose (large var)
+  # labels order: tight (small var) to mid to loose (large var)
   cut(x, breaks = q, include.lowest = TRUE, labels = c("tight","mid","loose"))
 }
 
@@ -126,7 +122,7 @@ if (length(strong_cols) == 0 || length(weak_cols) == 0) {
   weak_cols   <- ord[seq.int(from = M - n_take + 1, to = M)]
 }
 
-# Prior-strength grid. Smaller scale => stronger prior.
+# Prior-strength grid. Smaller scale = stronger prior.
 var_scales <- c(0.25, 0.5, 1, 2, 4)
 
 # Weakly-informative global priors (fixed across ablation)
@@ -139,9 +135,7 @@ alpha_h <- matrix(5,   M, K)
 beta_h  <- matrix(750, M, K)
 hyper_h <- list(theta_h, a_h, b_h, u_h, v_h, alpha_h, beta_h)
 
-# -------------------------
 # HELPERS
-# -------------------------
 make_view <- function(d_row, t_row, rho_i, tau_i, M) {
   M_obs_idx  <- which(d_row == 1 & !is.na(t_row) & t_row >= rho_i & t_row <= tau_i)
   M_part_idx <- which(d_row == 1 & !is.na(t_row) & t_row <  rho_i)
@@ -155,7 +149,7 @@ make_view <- function(d_row, t_row, rho_i, tau_i, M) {
   )
 }
 
-# restrict the view to a subset of columns (strong/weak)
+# Pick a subset of columns (strong/weak)
 make_view_subset <- function(d_row, t_row, rho_i, tau_i, M, cols) {
   v <- make_view(d_row, t_row, rho_i, tau_i, M)
   v$M_obs  <- intersect(v$M_obs,  cols)
@@ -178,27 +172,23 @@ safe_auc <- function(y, p) {
   if (length(unique(y)) > 1) as.numeric(pROC::auc(pROC::roc(y, p, quiet = TRUE))) else NA_real_
 }
 
-# -------------------------
-# OUTPUT DIR
-# -------------------------
-directory <- "src/ablationresults"
+# directory for outputs
+directory <- "src/ablationresultsnew"
 if (!dir.exists(directory)) dir.create(directory, recursive = TRUE)
 
-# -------------------------
 # ONE SETTING (var_scale)
-# -------------------------
 run_one_setting <- function(var_scale) {
   tag <- sprintf("vscale_%s", str_replace(as.character(var_scale), "\\.", "p"))
-  cache_train     <- file.path(directory, sprintf("train_%s.rds", tag))
-  cache_test_full <- file.path(directory, sprintf("test_full_%s.rds", tag))
+  save_train     <- file.path(directory, sprintf("train_%s.rds", tag))
+  save_test_full <- file.path(directory, sprintf("test_full_%s.rds", tag))
 
   mu0     <- mu0_base
-  sigma20 <- pmax(sigma20_base * var_scale, 1e-8)  # guard against 0
+  sigma20 <- pmax(sigma20_base * var_scale, 1e-8)  
 
-  # --- TRAIN (with cache + field check) ---
+  # TRAIN 
   need_train <- TRUE
-  if (file.exists(cache_train)) {
-    posterior_train <- readRDS(cache_train)
+  if (file.exists(save_train)) {
+    posterior_train <- readRDS(save_train)
     pp_chk <- posterior_train$posterior.parameters
     if (!is.null(pp_chk$gap_sigma2_star)) need_train <- FALSE
   }
@@ -223,10 +213,10 @@ run_one_setting <- function(var_scale) {
       birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
       female_conds = train_data$female_conds, cond_list = cond_list
     )
-    saveRDS(posterior_train, cache_train)
+    saveRDS(posterior_train, save_train)
   }
 
-  # --- EXTRACT GLOBALS FOR PREDICTION ---
+  # EXTRACT GLOBALS FOR PREDICTION
   pp <- posterior_train$posterior.parameters
   theta_post <- if (!is.null(pp$gamma_alpha)) pp$gamma_alpha / sum(pp$gamma_alpha) else rep(1/K, K)
   a_post     <- pp$pi_a
@@ -237,10 +227,10 @@ run_one_setting <- function(var_scale) {
   beta_post  <- pp$mu_beta
   hyper_post <- list(theta_post, a_post, b_post, u_post, v_post, alpha_post, beta_post)
 
-  # --- SHRINKAGE (TRAIN SET), PER CONDITION ---
-  gap_mu_tr  <- pp$gap_mu_star          # N_train x M
-  gap_var_tr <- pp$gap_sigma2_star      # N_train x M
-  ed_tr      <- pp$expected_d           # N_train x M
+  # SHRINKAGE (TRAIN SET), PER CONDITION
+  gap_mu_tr  <- pp$gap_mu_star          
+  gap_var_tr <- pp$gap_sigma2_star      
+  ed_tr      <- pp$expected_d           
 
   # guard shapes
   stopifnot(is.matrix(gap_mu_tr), is.matrix(gap_var_tr), is.matrix(ed_tr))
@@ -265,7 +255,7 @@ run_one_setting <- function(var_scale) {
     stringsAsFactors = FALSE
   )
 
-  # --- CLUSTER RECOVERY (FULL WINDOW, TEST) ---
+  # CLUSTER RECOVERY (FULL WINDOW, TEST)
   N_test <- test_data$N
   phi_mat <- matrix(NA_real_, N_test, K)
   for (i in 1:N_test) {
@@ -286,7 +276,7 @@ run_one_setting <- function(var_scale) {
   ari <- mclust::adjustedRandIndex(aligned_pred, truth_clusters)
   nmi <- aricode::NMI(aligned_pred, truth_clusters)
 
-  # --- FORWARD PREDICTION (TEST, ALL CONDITIONS) ---
+  # FORWARD PREDICTION (TEST, ALL CONDITIONS)
   set.seed(4242 + round(100*var_scale))
   cut_ages <- runif(N_test, min = 50, max = 90)
   cut_mat  <- matrix(cut_ages, nrow = N_test, ncol = M)
@@ -339,7 +329,7 @@ run_one_setting <- function(var_scale) {
   mae_vals <- abs(E_t_after[mae_mask] - t_true[mae_mask])
   mae_after <- if (length(mae_vals) > 0) mean(mae_vals) else NA_real_
 
-  # --- DROP-SET SENSITIVITY: STRONG vs WEAK PRIORS ONLY ---
+  # DROP-SET SENSITIVITY: STRONG vs WEAK PRIORS ONLY
   # Re-run predictive using only strong / only weak columns as evidence.
   pred_list_pre_strong <- vector("list", N_test)
   pred_list_pre_weak   <- vector("list", N_test)
@@ -413,7 +403,7 @@ run_one_setting <- function(var_scale) {
   mae_vals_w <- abs(E_t_after_weak[mae_mask_w] - t_true[mae_mask_w])
   mae_after_weak <- if (length(mae_vals_w) > 0) mean(mae_vals_w) else NA_real_
 
-  # --- STRATIFIED FORWARD METRICS ---
+  # STRATIFIED FORWARD METRICS
   fam_levels <- unique(delay_family)
   len_levels <- c("short","medium","long")
   strat_rows <- list()
@@ -476,13 +466,11 @@ run_one_setting <- function(var_scale) {
   )
   strat <- dplyr::bind_rows(strat_rows)
 
-  saveRDS(list(top = top, strat = strat, shrink = shrink_df), cache_test_full)
+  saveRDS(list(top = top, strat = strat, shrink = shrink_df), save_test_full)
   list(top = top, strat = strat, shrink = shrink_df)
 }
 
-# -------------------------
 # RUN GRID & SAVE
-# -------------------------
 all_results <- lapply(var_scales, run_one_setting)
 
 tops   <- bind_rows(lapply(all_results, `[[`, "top"))

@@ -1,76 +1,41 @@
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
 
-#!/usr/bin/env Rscript
+# Directory paths
+directory_results <- "src/ablationresultsnew"
+directory <- "src/identifiability"
 
-suppressPackageStartupMessages({
-  library(dplyr)
-  library(tidyr)
-  library(stringr)
-  library(readr)
-})
-
-`%||%` <- function(x, y) if (!is.null(x)) x else y
-
-# -----------------------------
-# Args: Rscript ident_from_ablation_rds.R <results_dir> <out_dir>
-# Defaults: results_dir='src/ablationresults', out_dir=results_dir
-# -----------------------------
-args <- commandArgs(trailingOnly = TRUE)
-results_dir <- if (length(args) >= 1) args[1] else "src/ablationresults"
-out_dir     <- if (length(args) >= 2) args[2] else results_dir
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-
-# -----------------------------
-# Helpers
-# -----------------------------
+# Parse numeric scale from filename
 parse_vscale_from_path <- function(path) {
-  # 'train_vscale_0p25.rds' -> 0.25 ; 'train_vscale_1.rds' -> 1
-  tg <- stringr::str_match(basename(path), "vscale_(.*)\\.rds$")[,2]
+  tg <- str_match(basename(path), "vscale_(.*)\\.rds$")[, 2]
   if (is.na(tg)) return(NA_real_)
   as.numeric(gsub("p", ".", tg))
 }
 
-safe_get <- function(x, dotted_names) {
-  # Try a list of candidate names like c("t_obs","inputs$t_obs","data$t_obs")
-  for (nm in dotted_names) {
-    parts <- strsplit(nm, "\\$")[[1]]
-    val <- x
-    ok <- TRUE
-    for (p in parts) {
-      if (!is.list(val) || is.null(val[[p]])) { ok <- FALSE; break }
-      val <- val[[p]]
-    }
-    if (ok && !is.null(val)) return(val)
-  }
-  NULL
-}
-
+# Extract key fields assuming consistent structure
 extract_train_fields <- function(obj) {
-  pp <- safe_get(obj, c("posterior.parameters", "posterior", "pp"))
-  gap <- safe_get(pp, c("gap_mu_star", "gap_mu", "gap_mean", "gap"))
-  gap_var <- safe_get(pp, c("gap_sigma2_star", "gap_var", "gap_sigma2"))
-  ed <- safe_get(pp, c("expected_d", "D_star", "E_d"))
-
-  t_mat   <- safe_get(obj, c("t_obs", "t", "inputs$t_obs", "inputs$t", "data$t_obs", "data$t", "misc$t_obs"))
-  d_mat   <- safe_get(obj, c("d", "inputs$d", "data$d"))
-  rho_vec <- safe_get(obj, c("rho", "inputs$rho", "data$rho"))
-  tau_vec <- safe_get(obj, c("tau", "inputs$tau", "data$tau"))
-  onset_truth <- safe_get(obj, c("onset", "inputs$onset", "data$onset"))
-  cond_list <- safe_get(obj, c("cond_list", "inputs$cond_list", "misc$cond_list"))
-
-  list(pp=pp, gap=gap, gap_var=gap_var, ed=ed,
-       t=t_mat, d=d_mat, rho=rho_vec, tau=tau_vec,
-       onset_truth=onset_truth, cond_list=cond_list)
+  pp <- obj$posterior.parameters
+  list(
+    pp = pp,
+    gap = pp$gap_mu_star,
+    gap_var = pp$gap_sigma2_star,
+    ed = pp$expected_d,
+    t = obj$t_obs,
+    d = obj$d,
+    rho = obj$rho,
+    tau = obj$tau,
+    onset_truth = obj$onset,
+    cond_list = obj$cond_list
+  )
 }
 
-# -----------------------------
-# Locate cached RDS files
-# -----------------------------
-train_files <- list.files(results_dir, pattern="^train_vscale_.*\\.rds$", full.names = TRUE)
-test_files  <- list.files(results_dir, pattern="^test_full_vscale_.*\\.rds$", full.names = TRUE)
 
-if (length(train_files) == 0) {
-  stop("No 'train_vscale_*.rds' files found in: ", results_dir)
-}
+# Get saved rds files
+train_files <- list.files(directory_results, pattern="^train_vscale_.*\\.rds$", full.names = TRUE)
+test_files  <- list.files(directory_results, pattern="^test_full_vscale_.*\\.rds$", full.names = TRUE)
+
 
 train_info <- tibble(file = train_files,
                      var_scale = sapply(train_files, parse_vscale_from_path)) %>%
@@ -80,17 +45,14 @@ test_info <- tibble(file = test_files,
                     var_scale = sapply(test_files, parse_vscale_from_path)) %>%
              arrange(var_scale)
 
-# -----------------------------
+
 # Load training objects and extract per-(i,m) latents
-# -----------------------------
 loaded <- list()
 for (i in seq_len(nrow(train_info))) {
   f <- train_info$file[i]
   vs <- train_info$var_scale[i]
   obj <- readRDS(f)
   ex  <- extract_train_fields(obj)
-
-  if (is.null(ex$gap)) stop("Couldn't find a delay mean field (e.g., 'gap_mu_star') in: ", f)
 
   N <- nrow(ex$gap); M <- ncol(ex$gap)
 
@@ -129,9 +91,7 @@ base <- loaded[[as.character(baseline_vs)]]
 M <- base$M
 cond_names <- base$cond_list
 
-# -----------------------------
 # Compute overall drift and compensation per var_scale
-# -----------------------------
 overall_rows <- list()
 bycond_rows  <- list()
 
@@ -223,10 +183,8 @@ for (vs in train_info$var_scale) {
 overall <- bind_rows(overall_rows) %>% arrange(var_scale)
 by_cond <- bind_rows(bycond_rows)   %>% arrange(var_scale, condition_index)
 
-# -----------------------------
-# Bring in the 'top' & 'shrink' frames from the test_full caches (if present)
-# so you can compare predictive metrics with latent drift.
-# -----------------------------
+# Bring in the 'top' & 'shrink' frames from the test_full files (if present)
+# so we can compare predictive metrics with latent drift.
 top_list <- list()
 shrink_list <- list()
 if (nrow(test_info) > 0) {
@@ -250,19 +208,16 @@ top_all <- if (length(top_list)) bind_rows(top_list) else NULL
 shrink_all <- if (length(shrink_list)) bind_rows(shrink_list) else NULL
 
 joined <- if (!is.null(top_all)) {
-  # We only join on var_scale to keep your original top columns intact
+  # We only join on var_scale to keep original top columns intact
   left_join(top_all, overall, by = "var_scale")
 } else {
   overall
 }
 
-# -----------------------------
-# Write outputs
-# -----------------------------
-out_overall <- file.path(out_dir, "ident_overall_from_rds.csv")
-out_bycond  <- file.path(out_dir, "ident_by_condition_from_rds.csv")
-out_joined  <- file.path(out_dir, "ident_top_joined_from_rds.csv")
-out_shrink  <- file.path(out_dir, "ident_shrink_from_rds.csv")
+out_overall <- file.path(directory, "ident_overall_from_rds.csv")
+out_bycond  <- file.path(directory, "ident_by_condition_from_rds.csv")
+out_joined  <- file.path(directory, "ident_top_joined_from_rds.csv")
+out_shrink  <- file.path(directory, "ident_shrink_from_rds.csv")
 
 readr::write_csv(overall, out_overall)
 readr::write_csv(by_cond, out_bycond)

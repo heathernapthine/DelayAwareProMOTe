@@ -1,46 +1,36 @@
-# BIMODAL-DELAY TEST SCRIPT WITH CENTERED SINGLE-GAUSSIAN DELAY PRIOR.
 set.seed(42)
 
-suppressPackageStartupMessages({
-  library(mclust)
-  library(aricode)
-  library(pROC)
-  library(ggplot2)
-  library(truncnorm)
-  library(dplyr)
-  library(tidyr)
-  library(clue)
-  library(MCMCpack)
-})
+library(mclust)
+library(aricode)
+library(pROC)
+library(ggplot2)
+library(truncnorm)
+library(dplyr)
+library(tidyr)
+library(clue)
+library(MCMCpack)
 
-# PATHS AND SOURCE FILES.
 data_path <- "data/generated_promote_style_bimodal_delays.rds"
-out_dir   <- "src/closebimodal"
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+directory   <- "src/closebimodal"
+dir.create(directory, recursive = TRUE, showWarnings = FALSE)
 
-# DELAY-AWARE VB AND UTILITIES.
+# DELAY VB AND UTILITIES.
 source("src/delay_VB.R")                 # VB_gaussian_update().
-source("src/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
-source("src/ProMOTe_LTCt_delay.R")       # expected_LTHC_t_after_tau().
-source("src/ProMOTe_Predictive_delay.R") # VB_gaussian_predictive_density().
-source("src/ProMOTe_utility_delay.R")    # Helper utilities for delay-aware code.
+source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
+source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # expected_LTHC_t_after_tau().
+source("src/functionswithdelay/ProMOTe_Predictive_delay.R") # VB_gaussian_predictive_density().
+source("src/functionswithdelay/ProMOTe_utility_delay.R")    # Helper utilities for delay-aware code.
 
-# NO-DELAY BASELINE VB AND UTILITIES.
-source("src/ProMOTe_VB.R")               # VB_gaussian_update() baseline.
-source("src/ProMOTe_Predictive.R")       # VB_gaussian_predictive_density() baseline.
-source("src/ProMOTe_LTCby.R")            # probability_LTHC_by_T() baseline.
-source("src/ProMOTe_LTCt.R")             # expected_LTHC_t_after_tau() baseline.
-source("src/ProMOTe_utility.R")          # Helper utilities for baseline code.
+# NO-DELAY VB AND UTILITIES.
+source("src/functions/ProMOTe_VB.R")               # VB_gaussian_update() baseline.
+source("src/functions/ProMOTe_Predictive.R")       # VB_gaussian_predictive_density() baseline.
+source("src/functions/ProMOTe_LTCby.R")            # probability_LTHC_by_T() baseline.
+source("src/functions/ProMOTe_LTCt.R")             # expected_LTHC_t_after_tau() baseline.
+source("src/functions/ProMOTe_utility.R")          # Helper utilities for baseline code.
 
 # LOAD DATA (BIMODAL).
 data_all <- readRDS(data_path)
 
-# THE DATASET IS EXPECTED TO CONTAIN THE FOLLOWING FIELDS.
-# THE FIELDS INCLUDE d, t, rho, tau, iota, cond_list, M, and optionally z for metrics, and for priors we expect is_bimodal, early_mean, late_mean, early_sd, late_sd, delay_mu, and delay_sd.
-# FOR EVALUATION OF EARLY OR LATE WE USE delay_component AS AN N BY M MATRIX WITH VALUES 'early', 'late', 'unimodal', OR NA.
-stopifnot(all(c("d","t","rho","tau","iota","M","cond_list") %in% names(data_all)))
-stopifnot(all(c("is_bimodal","early_mean","late_mean","early_sd","late_sd",
-                "delay_mu","delay_sd","delay_component") %in% names(data_all)))
 
 # TRAIN AND TEST SPLIT.
 n_total <- nrow(data_all$d)
@@ -147,8 +137,8 @@ posterior_delay <- VB_gaussian_update(
   cond_list = cond_list
 )
 
-saveRDS(posterior_delay, file = file.path(out_dir, "posterior_delay_train.rds"))
-posterior_delay <- readRDS(file.path(out_dir, "posterior_delay_train.rds"))
+saveRDS(posterior_delay, file = file.path(directory, "posterior_delay_train.rds"))
+posterior_delay <- readRDS(file.path(directory, "posterior_delay_train.rds"))
 
 # COLLECT POSTERIOR FOR PREDICTION FOR THE DELAY-AWARE MODEL.
 ppd <- posterior_delay$posterior.parameters
@@ -184,8 +174,8 @@ posterior_base <- VB_gaussian_update(
   cond_list = cond_list
 )
 
-saveRDS(posterior_base, file = file.path(out_dir, "posterior_nodelay_train.rds"))
-posterior_base <- readRDS(file.path(out_dir, "posterior_nodelay_train.rds"))
+saveRDS(posterior_base, file = file.path(directory, "posterior_nodelay_train.rds"))
+posterior_base <- readRDS(file.path(directory, "posterior_nodelay_train.rds"))
 
 # COLLECT POSTERIOR FOR PREDICTION FOR THE BASELINE MODEL.
 ppb <- posterior_base$posterior.parameters
@@ -478,7 +468,7 @@ summary_stats <- tibble(
   )
 
 # SAVE NUMERIC RESULTS.
-write.csv(summary_stats, file = file.path(out_dir, "summary_stats_bimodal.csv"), row.names = FALSE)
+write.csv(summary_stats, file = file.path(directory, "summary_stats_bimodal.csv"), row.names = FALSE)
 
 # VISUALIZATION PLOTS.
 # DEFINE A SIMPLE COLOR SCHEME.
@@ -497,7 +487,7 @@ p1 <- summary_stats %>%
   ) +
   theme_classic(base_size = 12)
 
-ggsave(file.path(out_dir, "mae_diff_late_barplot.png"), p1, width = 9, height = 7, dpi = 300)
+ggsave(file.path(directory, "mae_diff_late_barplot.png"), p1, width = 9, height = 7, dpi = 300)
 
 # PLOT THE CHI SQUARED NEGATIVE LOG TEN P BARPLOT FOR EARLY VERSUS LATE CLUSTER SEPARATION.
 df_long_chi <- summary_stats %>%
@@ -519,8 +509,8 @@ p2 <- ggplot(df_long_chi, aes(x = reorder(condition, logp), y = logp, fill = mod
        x = "Condition", y = "-log10(p-value)") +
   theme_classic(base_size = 12)
 
-ggsave(file.path(out_dir, "chi2_logp_barplot.png"), p2, width = 9, height = 7, dpi = 300)
+ggsave(file.path(directory, "chi2_logp_barplot.png"), p2, width = 9, height = 7, dpi = 300)
 
-cat("Saved:\n  ", file.path(out_dir, "summary_stats_bimodal.csv"), "\n  ",
-    file.path(out_dir, "mae_diff_late_barplot.png"), "\n  ",
-    file.path(out_dir, "chi2_logp_barplot.png"), "\n", sep = "")
+cat("Saved:\n  ", file.path(directory, "summary_stats_bimodal.csv"), "\n  ",
+    file.path(directory, "mae_diff_late_barplot.png"), "\n  ",
+    file.path(directory, "chi2_logp_barplot.png"), "\n", sep = "")
