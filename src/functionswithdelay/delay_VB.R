@@ -1,4 +1,4 @@
-VB_gaussian_update <- function(
+VB_gaussian_update_d <- function(
   d, t_obs, rho, tau, iota,
   hyperparameters,
   initial_Cstar, initial_Dstar, initial_pstar, initial_qstar, initial_rstar,

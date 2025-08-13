@@ -1,4 +1,4 @@
-VB_gaussian_predictive_density <- function(
+VB_gaussian_predictive_density_d <- function(
   hyperparameters, 
   M_obs, M_part, M_unobs, 
   d_obs, t_obs, d_part, 

@@ -1,4 +1,4 @@
-expected_LTHC_t_after_tau <- function(parameters, hyperparameters, tau, M,
+expected_LTHC_t_after_tau_d <- function(parameters, hyperparameters, tau, M,
                                       mu0, sigma20) {
   # parameters: list(phi, eta, varpi) from VB_gaussian_predictive_density()
   # hyperparameters: list(theta, a, b, u, v, alpha, beta)

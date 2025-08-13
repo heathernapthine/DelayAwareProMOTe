@@ -1,4 +1,4 @@
-expected_lst_lefttrunc <- function(df, mu, sigma, tau) {
+expected_lst_lefttrunc_d <- function(df, mu, sigma, tau) {
   # Expectation of a left-truncated location-scale Student-t:
   # E[X | X > tau],  X = mu + sigma * T_df
   #

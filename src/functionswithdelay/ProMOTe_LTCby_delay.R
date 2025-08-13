@@ -1,4 +1,4 @@
-probability_LTHC_by_T <- function(parameters, hyperparameters, T, tau, M, 
+probability_LTHC_by_T_d <- function(parameters, hyperparameters, T, tau, M, 
                                   mu0, sigma20) {
   # Inputs:
   # - parameters: list(phi, eta, varpi) from VB_gaussian_predictive_density()
