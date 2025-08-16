@@ -142,7 +142,7 @@ posterior_train <- readRDS("src/resultsonsetdatatwelth/posterior_val_delay_train
 
 # Source delay aware predictive utilities.
 source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
-source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # Expected time after cut.
+source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # Expected time after cut-off.
 source("src/functionswithdelay/ProMOTe_Predictive_delay.R")  # Predictive density.
 source("src/functionswithdelay/ProMOTe_utility_delay.R")     # Helpers.
 
@@ -246,14 +246,14 @@ cat("TEST SET (cluster recovery, aligned):\n")
 cat("  Correct assignments:", round(acc_test * 100, 2), "%\n")
 cat("  ARI:", round(ari_test, 4), " | NMI:", round(nmi_test, 4), "\n\n")
 
-# Evaluate forward prediction after a random cut age.
+# Evaluate forward prediction after a random cut-off age.
 cat("TEST: forward prediction via predictive \n")
 
 set.seed(42)
 cut_ages <- runif(N_test, min = 50, max = 90)
 cut_mat  <- matrix(cut_ages, nrow = N_test, ncol = M)
 
-# Recompute phi using only pre cut evidence.
+# Recompute phi using only pre cut-off evidence.
 phi_pre_mat <- matrix(NA_real_, N_test, K)
 
 # Store predictive components for later mixing.
@@ -265,7 +265,7 @@ for (i in 1:N_test) {
     d_row = test_data$d[i, ],
     t_row = test_data$t[i, ],
     rho_i = test_data$rho[i],
-    tau_i = cut_i,     # Pre cut window ends at the current age.
+    tau_i = cut_i,     # Pre cut-off window ends at the current age.
     M = M
   )
   pred <- VB_gaussian_predictive_density(
@@ -286,9 +286,9 @@ for (i in 1:N_test) {
   pred_list_pre[[i]] <- pred
 }
 
-# Compute after cut presence probabilities and expected times.
+# Compute after cut-off presence probabilities and expected times.
 P_after <- matrix(0, N_test, M)       # Probability of event in the interval.
-E_t_after <- matrix(NA_real_, N_test, M)  # Expected time given survival past the cut.
+E_t_after <- matrix(NA_real_, N_test, M)  # Expected time given survival past the cut-off.
 
 for (i in 1:N_test) {
   cut_i <- cut_ages[i]
@@ -305,7 +305,7 @@ for (i in 1:N_test) {
   )
   P_after[i, ] <- probs_i
 
-  # Compute expected time after the cut.
+  # Compute expected time after the cut-off.
   Et_i <- expected_LTHC_t_after_tau(
     parameters = pred,
     hyperparameters = hyper_post,
@@ -317,14 +317,14 @@ for (i in 1:N_test) {
   E_t_after[i, ] <- Et_i
 }
 
-# Build ground truth labels for after cut evaluation.
+# Build ground truth labels for after cut off evaluation.
 d_true   <- test_data$d
 t_true   <- test_data$t
 tau_true <- test_data$tau
 
-is_pos <- (d_true == 1) & (t_true > cut_mat) & (t_true <= tau_true)   # Observed after cut event.
-is_neg <- (d_true == 0) | ((d_true == 1) & (t_true <= cut_mat))       # Not after cut.
-is_unk <- (d_true == 1) & (t_true > tau_true)                         # Right censored after cut.
+is_pos <- (d_true == 1) & (t_true > cut_mat) & (t_true <= tau_true)   # Observed after cut-off event.
+is_neg <- (d_true == 0) | ((d_true == 1) & (t_true <= cut_mat))       # Not after cut-off.
+is_unk <- (d_true == 1) & (t_true > tau_true)                         # Right censored after cut-off.
 
 eval_mask <- (is_pos | is_neg) & !is_unk
 
@@ -341,16 +341,16 @@ if (length(unique(y_true)) > 1) {
   roc_after <- as.numeric(pROC::auc(roc_obj))
 }
 
-cat("FORWARD PREDICTION (AFTER-CUT):\n")
+cat("FORWARD PREDICTION (AFTER-CUT-OFF):\n")
 cat("  Disease presence accuracy:", round(acc_after * 100, 2), "%\n")
 cat("  Disease presence AUROC:", ifelse(is.na(roc_after), "NA", round(roc_after, 4)), "\n\n")
 
-# Compute diagnosis age mean absolute error for observed after cut events.
+# Compute diagnosis age mean absolute error for observed after cut-off events.
 mae_mask <- is_pos & !is.na(E_t_after)
 mae_vals <- abs(E_t_after[mae_mask] - t_true[mae_mask])
 mae_after <- if (length(mae_vals) > 0) mean(mae_vals) else NA_real_
 
-cat("  Diagnosis age MAE (observed after-cut events):",
+cat("  Diagnosis age MAE (observed after-cut-off events):",
     ifelse(is.na(mae_after), "NA", round(mae_after, 3)), "years\n\n")
 
 
@@ -473,7 +473,7 @@ cat("NO-DELAY TEST (aligned):\n")
 cat("  Correct assignments:", round(acc_test*100, 2), "%\n")
 cat("  ARI:", round(ari_test, 4), " | NMI:", round(nmi_test, 4), "\n\n")
 
-# Evaluate forward prediction for the baseline with a random cut in the range.
+# Evaluate forward prediction for the baseline with a random cut-off in the range.
 cat("TEST: forward prediction (no-delay)\n")
 
 set.seed(42)
@@ -502,7 +502,7 @@ for (i in 1:N_test) {
   pred_list_pre[[i]] <- pred
 }
 
-# Compute after cut probabilities and expected times for the baseline.
+# Compute after cut-off probabilities and expected times for the baseline.
 P_after   <- matrix(0, N_test, M)
 E_t_after <- matrix(NA_real_, N_test, M)
 
@@ -515,7 +515,7 @@ for (i in 1:N_test) {
   E_t_after[i, ] <- expected_LTHC_t_after_tau(pred, hyper_post_nd, tau=cut_i, M=M)
 }
 
-# Build labels for evaluation after the cut.
+# Build labels for evaluation after the cut-off.
 d_true   <- test_data$d
 t_true   <- test_data$t
 tau_true <- test_data$tau
@@ -535,7 +535,7 @@ roc_after <- if (length(unique(y_true)) > 1) {
   as.numeric(pROC::auc(pROC::roc(y_true, y_prob, quiet = TRUE)))
 } else NA_real_
 
-# Compute diagnosis age mean absolute error for observed after cut events.
+# Compute diagnosis age mean absolute error for observed after cut-off events.
 mae_mask <- is_pos & !is.na(E_t_after)
 mae_vals <- abs(E_t_after[mae_mask] - t_true[mae_mask])
 mae_after <- if (length(mae_vals) > 0) mean(mae_vals) else NA_real_

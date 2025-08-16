@@ -11,10 +11,10 @@ library(MCMCpack)
 library(purrr)
 library(stringr)
 
-source("src/delay_VB.R")                 # VB_gaussian_update()
+source("src/functionswithdelay/delay_VB.R")                 # VB_gaussian_update_d()
 source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
-source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # expected_LTHC_t_after_tau()
-source("src/functionswithdelay/ProMOTe_Predictive_delay.R") # VB_gaussian_predictive_density()
+source("src/functionswithdelay/ProMOTe_LTCt_delay.R")       # expected_LTHC_t_after_tau_d()
+source("src/functionswithdelay/ProMOTe_Predictive_delay.R") # VB_gaussian_predictive_density_d()
 source("src/functionswithdelay/ProMOTe_utility_delay.R")    # helpers
 
 # LOAD DATA & TRAIN/TEST
@@ -173,7 +173,7 @@ safe_auc <- function(y, p) {
 }
 
 # directory for outputs
-directory <- "src/ablationresultsnew"
+directory <- "src/ablationresultsfifteenth"
 if (!dir.exists(directory)) dir.create(directory, recursive = TRUE)
 
 # ONE SETTING (var_scale)
@@ -201,7 +201,7 @@ run_one_setting <- function(var_scale) {
     init_q <- matrix(runif(N_train * M, 1, 2),  N_train, M)
     init_r <- matrix(runif(N_train * M, 0.01, 0.02), N_train, M)
 
-    posterior_train <- VB_gaussian_update(
+    posterior_train <- VB_gaussian_update_d(
       t_obs = train_data$t, d = train_data$d, rho = train_data$rho, tau = train_data$tau,
       iota = train_data$iota, hyperparameters = hyper_h,
       initial_Cstar = init_C, initial_Dstar = init_D,
@@ -260,7 +260,7 @@ run_one_setting <- function(var_scale) {
   phi_mat <- matrix(NA_real_, N_test, K)
   for (i in 1:N_test) {
     vview <- make_view(test_data$d[i, ], test_data$t[i, ], test_data$rho[i], test_data$tau[i], M)
-    pred <- VB_gaussian_predictive_density(
+    pred <- VB_gaussian_predictive_density_d(
       hyperparameters = hyper_post,
       M_obs  = vview$M_obs, M_part = vview$M_part, M_unobs = vview$M_unobs,
       d_obs  = vview$d_obs, t_obs  = vview$t_obs,  d_part  = vview$d_part,
@@ -286,7 +286,7 @@ run_one_setting <- function(var_scale) {
   for (i in 1:N_test) {
     cut_i <- cut_ages[i]
     vview <- make_view(test_data$d[i, ], test_data$t[i, ], test_data$rho[i], cut_i, M)
-    pred <- VB_gaussian_predictive_density(
+    pred <- VB_gaussian_predictive_density_d(
       hyperparameters = hyper_post,
       M_obs  = vview$M_obs, M_part = vview$M_part, M_unobs = vview$M_unobs,
       d_obs  = vview$d_obs, t_obs  = vview$t_obs,  d_part  = vview$d_part,
@@ -303,9 +303,9 @@ run_one_setting <- function(var_scale) {
     cut_i <- cut_ages[i]
     T_i   <- test_data$tau[i]
     pred  <- pred_list_pre[[i]]
-    P_after[i, ] <- probability_LTHC_by_T(pred, hyper_post, T = T_i, tau = cut_i, M = M,
+    P_after[i, ] <- probability_LTHC_by_T_d(pred, hyper_post, T = T_i, tau = cut_i, M = M,
                                           mu0 = mu0, sigma20 = sigma20)
-    E_t_after[i, ] <- expected_LTHC_t_after_tau(pred, hyper_post, tau = cut_i, M = M,
+    E_t_after[i, ] <- expected_LTHC_t_after_tau_d(pred, hyper_post, tau = cut_i, M = M,
                                                 mu0 = mu0, sigma20 = sigma20)
   }
 
@@ -338,7 +338,7 @@ run_one_setting <- function(var_scale) {
     cut_i <- cut_ages[i]
 
     v_strong <- make_view_subset(test_data$d[i, ], test_data$t[i, ], test_data$rho[i], cut_i, M, strong_cols)
-    pred_s <- VB_gaussian_predictive_density(
+    pred_s <- VB_gaussian_predictive_density_d(
       hyperparameters = hyper_post,
       M_obs  = v_strong$M_obs, M_part = v_strong$M_part, M_unobs = v_strong$M_unobs,
       d_obs  = v_strong$d_obs, t_obs  = v_strong$t_obs,  d_part  = v_strong$d_part,
@@ -348,7 +348,7 @@ run_one_setting <- function(var_scale) {
     pred_list_pre_strong[[i]] <- pred_s
 
     v_weak <- make_view_subset(test_data$d[i, ], test_data$t[i, ], test_data$rho[i], cut_i, M, weak_cols)
-    pred_w <- VB_gaussian_predictive_density(
+    pred_w <- VB_gaussian_predictive_density_d(
       hyperparameters = hyper_post,
       M_obs  = v_weak$M_obs, M_part = v_weak$M_part, M_unobs = v_weak$M_unobs,
       d_obs  = v_weak$d_obs, t_obs  = v_weak$t_obs,  d_part  = v_weak$d_part,
@@ -368,15 +368,15 @@ run_one_setting <- function(var_scale) {
     T_i   <- test_data$tau[i]
 
     pred_s <- pred_list_pre_strong[[i]]
-    P_after_strong[i, ] <- probability_LTHC_by_T(pred_s, hyper_post, T = T_i, tau = cut_i, M = M,
+    P_after_strong[i, ] <- probability_LTHC_by_T_d(pred_s, hyper_post, T = T_i, tau = cut_i, M = M,
                                                  mu0 = mu0, sigma20 = sigma20)
-    E_t_after_strong[i, ] <- expected_LTHC_t_after_tau(pred_s, hyper_post, tau = cut_i, M = M,
+    E_t_after_strong[i, ] <- expected_LTHC_t_after_tau_d(pred_s, hyper_post, tau = cut_i, M = M,
                                                        mu0 = mu0, sigma20 = sigma20)
 
     pred_w <- pred_list_pre_weak[[i]]
-    P_after_weak[i, ] <- probability_LTHC_by_T(pred_w, hyper_post, T = T_i, tau = cut_i, M = M,
+    P_after_weak[i, ] <- probability_LTHC_by_T_d(pred_w, hyper_post, T = T_i, tau = cut_i, M = M,
                                                mu0 = mu0, sigma20 = sigma20)
-    E_t_after_weak[i, ] <- expected_LTHC_t_after_tau(pred_w, hyper_post, tau = cut_i, M = M,
+    E_t_after_weak[i, ] <- expected_LTHC_t_after_tau_d(pred_w, hyper_post, tau = cut_i, M = M,
                                                      mu0 = mu0, sigma20 = sigma20)
   }
 

@@ -45,7 +45,7 @@ expected_LTHC_t_after_tau_d <- function(parameters, hyperparameters, tau, M,
 
 
   # E[Y | Y > tau] per (m,k) using left-truncated Student-t expectation
-  Et_mk <- expected_lst_lefttrunc(df, muY, sdY, tau)           
+  Et_mk <- expected_lst_lefttrunc_d(df, muY, sdY, tau)           
 
   # Mix across clusters GIVEN event after tau:
   # weights w_{m,k} proportional to phi_k * eta_{m,k}

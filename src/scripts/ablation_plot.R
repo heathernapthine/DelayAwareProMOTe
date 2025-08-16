@@ -11,7 +11,7 @@ light_blue <- "#A6CEE3"
 purple     <- "#bd5bd3"
 
 
-directory <- "src/ablationresultsnew"
+directory <- "src/ablationresultsfifteenth"
 tops_path    <- file.path(directory, "ablation_prior_strength_top.csv")
 shrink_path  <- file.path(directory, "ablation_prior_shrinkage_condition.csv")
 
