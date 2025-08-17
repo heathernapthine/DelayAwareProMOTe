@@ -10,8 +10,8 @@ path_nodelay <- "src/resultsmixeddata/posterior_val_no_delay_train.rds"
 obj_delay   <- readRDS(path_delay)
 obj_nodelay <- readRDS(path_nodelay)
 
-elbo_delay <- as.numeric(obj_delay$elbo)   
-elbo_nodelay <- as.numeric(obj_nodelay$elbo) 
+elbo_delay <- (as.numeric(obj_delay$elbo))[3:69]   
+elbo_nodelay <- as.numeric(obj_nodelay$elbo)[3:65]
 
 df_list <- list()
 if (length(elbo_delay) > 0) {

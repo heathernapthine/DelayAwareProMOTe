@@ -81,8 +81,7 @@ VB_gaussian_update_d <- function(
   elbo_musig_prior_const <- 0.5 * sum(log(v_hyper)) - 0.5 * sum(log(2 * pi)) +
                             sum(alpha_hyper * log(beta_hyper)) - sum(lgamma(alpha_hyper))
 
-
-  while (param_difference > 0.1 && n_steps < 70) {
+  while (param_difference > 0.1) {
     n_steps <- n_steps + 1
 
     # Update gap moments under truncated normal and derive onset time.
@@ -121,10 +120,10 @@ VB_gaussian_update_d <- function(
     expected_dt2 <- expected_d * expected_t2
 
     # Compute sufficient statistics for global updates.
-    EdEz     <- t(expected_d)   %*% expected_z
+    EdEz     <- t(expected_d)     %*% expected_z
     EdcEz    <- t(1 - expected_d) %*% expected_z
-    EdtEz    <- t(expected_dt)  %*% expected_z
-    Edt_sqEz <- t(expected_dt2) %*% expected_z
+    EdtEz    <- t(expected_dt)    %*% expected_z
+    Edt_sqEz <- t(expected_dt2)   %*% expected_z
 
     # Save parameters for convergence tracking.
     theta_star_old <- theta_star
@@ -145,18 +144,19 @@ VB_gaussian_update_d <- function(
     v_star     <- v_hyper + EdEz
     alpha_star <- alpha_hyper + (EdEz / 2)
     beta_star <- beta_hyper + 0.5 * (
-  Edt_sqEz + v_hyper * (u_hyper^2) -
-  ((v_hyper * u_hyper + EdtEz)^2) / (v_hyper + EdEz)
-)
+      Edt_sqEz + v_hyper * (u_hyper^2) -
+      ((v_hyper * u_hyper + EdtEz)^2) / (v_hyper + EdEz)
+    )
 
     # Compute expectations under updated global posteriors.
-    expected_log_gamma        <- digamma(theta_star) - digamma(sum(theta_star))
-    expected_log_pi           <- digamma(a_star) - digamma(a_star + b_star)
-    expected_log_pi_complement<- digamma(b_star) - digamma(a_star + b_star)
-    expected_log_sigma_squared<- log(beta_star) - digamma(alpha_star)
-    expected_mu2_sigma2 <- ((1 / v_star) + (u_star^2)) * (alpha_star / beta_star)
-    expected_mu_sigma2        <- u_star * alpha_star / beta_star
-    expected_sigma2_inverse   <- alpha_star / beta_star
+    expected_log_gamma         <- digamma(theta_star) - digamma(sum(theta_star))
+    expected_log_pi            <- digamma(a_star) - digamma(a_star + b_star)
+    expected_log_pi_complement <- digamma(b_star) - digamma(a_star + b_star)
+    expected_log_sigma_squared <- log(beta_star) - digamma(alpha_star)
+     #Update expected_mu2/sigma2
+    expected_mu2_sigma2 <- (1/v_star) + (u_star**2) * alpha_star/beta_star
+    expected_mu_sigma2         <- u_star * alpha_star / beta_star
+    expected_sigma2_inverse    <- alpha_star / beta_star
 
     # Update patient level latents given expectations.
     C_star <- -matrix(expected_log_gamma, N, K) -
@@ -207,60 +207,15 @@ VB_gaussian_update_d <- function(
 
     prev_expected_t_onset <- expected_t
 
-    # Print quick progress diagnostics.
+    # Quick progress diagnostic.
     cat(n_steps, param_difference, "\n")
 
-    # Compute and store ELBO components.
-    # Build masks for observed and censored entries.
-    obs_mask <- (not_censored & d == 1)
-    lcf_mask <- left_censored
-    rcf_mask <- right_censored
-
-    # Project expectations to individual by condition shape.
-    E_log_sigma2_nm <- expected_z %*% t(expected_log_sigma_squared)
-    E_mu2_sigma2_nm <- expected_z %*% t(expected_mu2_sigma2)
-    E_mu_sigma2_nm  <- expected_z %*% t(expected_mu_sigma2)
-    E_siginv_nm     <- expected_z %*% t(expected_sigma2_inverse)
-
-    # Contribution from prior on cluster probabilities.
-    elbo_z_prior <- sum(expected_z %*% expected_log_gamma)
-
-    # Contribution from presence likelihood.
-    elbo_d_lik <- sum(expected_d * (expected_z %*% t(expected_log_pi))) +
-                  sum((1 - expected_d) * (expected_z %*% t(expected_log_pi_complement)))
-
-    # Contribution from observed onset terms.
+    #### =========================
+    #### ELBO (moment-matched; aligned with updates)
+    #### =========================
     log2pi <- log(2 * pi)
-    L_obs <- -0.5 * sum(obs_mask * (log2pi + E_log_sigma2_nm + E_mu2_sigma2_nm)) +
-              sum(obs_mask * (t_onset * E_mu_sigma2_nm)) -
-              0.5 * sum(obs_mask * (t_onset^2 * E_siginv_nm))
 
-    # Contribution from censored pieces using plug in moments.
-    sigma_hat <- sqrt(beta_star / alpha_star)
-    L_left <- 0
-    L_right <- 0
-    rho_mat <- matrix(rho, nrow = N, ncol = M)
-    tau_mat <- matrix(tau, nrow = N, ncol = M)
-
-    for (k in 1:K) {
-      mu_k  <- matrix(u_star[, k],     nrow = N, ncol = M, byrow = TRUE)
-      sg_k  <- matrix(sigma_hat[, k],  nrow = N, ncol = M, byrow = TRUE)
-      zcol  <- matrix(expected_z[, k], nrow = N, ncol = M, byrow = FALSE)
-
-      # Log probability for left censored times.
-      larg  <- (rho_mat - mu_k) / sg_k
-      lcf_nm <- log(pmax(pnorm(larg), 1e-12))
-      L_left  <- L_left + sum( lcf_mask * zcol * lcf_nm )
-
-      # Log probability for right censored times.
-      rarg  <- (tau_mat - mu_k) / sg_k
-      rcf_nm <- log(pmax(1 - pnorm(rarg), 1e-12))
-      L_right <- L_right + sum( rcf_mask * zcol * rcf_nm )
-    }
-
-    elbo_likelihood <- elbo_z_prior + elbo_d_lik + L_obs + L_left + L_right
-
-    # Prior terms for global parameters.
+    # Priors over globals (same forms as before).
     elbo_gamma_prior <- elbo_gamma_prior_const + sum((theta_hyper - 1) * expected_log_gamma)
     elbo_pi_prior    <- elbo_pi_prior_const +
                         sum((a_hyper - 1) * expected_log_pi) +
@@ -272,7 +227,19 @@ VB_gaussian_update_d <- function(
                         sum(u_hyper * v_hyper * expected_mu_sigma2) -
                         sum((((u_hyper^2) * v_hyper) / 2) * expected_sigma2_inverse)
 
-    # Entropy terms for global variational distributions.
+    # Likelihood under the same quadratic surrogate used in the updates.
+    ones_KM <- matrix(1, K, M)
+    elbo_likelihood <-
+      sum(expected_z %*% expected_log_gamma) +
+      sum(expected_d * (expected_z %*% t(expected_log_pi))) +
+      sum((1 - expected_d) * (expected_z %*% t(expected_log_pi_complement))) -
+      0.5 * log2pi * sum(expected_d * (expected_z %*% ones_KM)) -
+      0.5 * sum(expected_d  * (expected_z %*% t(expected_log_sigma_squared))) -
+      0.5 * sum(expected_d  * (expected_z %*% t(expected_mu2_sigma2))) +
+      sum(expected_dt  * (expected_z %*% t(expected_mu_sigma2))) -
+      0.5 * sum(expected_dt2 * (expected_z %*% t(expected_sigma2_inverse)))
+
+    # Entropies for globals.
     elbo_qgamma <- lgamma(sum(theta_star)) - sum(lgamma(theta_star)) + sum((theta_star - 1) * expected_log_gamma)
     elbo_qpi    <- sum(lgamma(a_star + b_star)) - sum(lgamma(a_star)) - sum(lgamma(b_star)) +
                    sum((a_star - 1) * expected_log_pi) + sum((b_star - 1) * expected_log_pi_complement)
@@ -284,11 +251,9 @@ VB_gaussian_update_d <- function(
                    sum(u_star * v_star * expected_mu_sigma2) -
                    sum((((u_star^2) * v_star) / 2) * expected_sigma2_inverse)
 
-    # Entropy of cluster responsibilities.
+    # Entropy of responsibilities and presence variables.
     expected_z_safe <- pmax(expected_z, 1e-15)
     elbo_qz <- -sum(expected_z * log(expected_z_safe))
-
-    # Entropy of presence variables where they are variational.
     expected_d_safe <- pmax(pmin(expected_d, 1 - 1e-15), 1e-15)
     elbo_qd <- 0
     if (sum(right_censored) > 0) {
@@ -296,17 +261,19 @@ VB_gaussian_update_d <- function(
                       (1 - expected_d[right_censored]) * log(1 - expected_d_safe[right_censored]))
     }
 
-    # KL divergence for delay posteriors against their priors.
+    # KL for delay posteriors vs priors (diagnosed entries only; fixed mask).
+    diagnosed_mask <- (!is.na(t_obs)) & (d == 1)
     mu0_mat     <- matrix(mu0,     nrow = N, ncol = M, byrow = TRUE)
     sigma20_mat <- matrix(sigma20, nrow = N, ncol = M, byrow = TRUE)
     gap_sigma2_star_safe <- pmax(gap_sigma2_star, 1e-8)
 
-    KL_gap_nm <- 0.5 * ( log(sigma20_mat) - log(gap_sigma2_star_safe) - 1 +
-                         (gap_sigma2_star / sigma20_mat) +
-                         ((gap_mu_star - mu0_mat)^2 / sigma20_mat) )
-    kl_qgap_pgap <- sum( expected_d * KL_gap_nm )
+    kl_qgap_pgap <- 0.5 * sum(
+      log(sigma20_mat[diagnosed_mask]) - log(gap_sigma2_star_safe[diagnosed_mask]) - 1 +
+      (gap_sigma2_star[diagnosed_mask] / sigma20_mat[diagnosed_mask]) +
+      ((gap_mu_star[diagnosed_mask] - mu0_mat[diagnosed_mask])^2 / sigma20_mat[diagnosed_mask])
+    )
 
-    # Assemble full ELBO.
+    # Full ELBO.
     elbo <- elbo_gamma_prior +
             elbo_pi_prior +
             elbo_musig_prior +

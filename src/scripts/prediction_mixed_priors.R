@@ -11,7 +11,7 @@ library(clue)
 library(MCMCpack) 
 
 # Get the delay aware VB implementation.
-source("src/delay_VB.R")  # VB_gaussian_update().
+source("src/functionswithdelay/delay_VB_2.R")  # VB_gaussian_update().
 
 data_all <- readRDS("data/generated_promote_style_mixed_delays.rds")
 
@@ -124,22 +124,22 @@ init_pstar_train <- matrix(runif(N_train * M, 0, 10), N_train, M)
 init_qstar_train <- matrix(runif(N_train * M, 1, 2),  N_train, M)
 init_rstar_train <- matrix(runif(N_train * M, 0.01, 0.02), N_train, M)
 
-# posterior_train <- VB_gaussian_update(
-#   t_obs = train_data$t, d = train_data$d, rho = train_data$rho, tau = train_data$tau,
-#   iota = train_data$iota, hyperparameters = hyperparameters,
-#   initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
-#   initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
-#   initial_rstar = init_rstar_train, N = N_train, M = M,
-#   K = K, epsilon = epsilon,
-#   mu0 = mu0, sigma20 = sigma20,
-#   sex = train_data$sex,
-#   birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
-#   female_conds = train_data$female_conds, cond_list = cond_list
-# )
+posterior_train <- VB_gaussian_update_d(
+  t_obs = train_data$t, d = train_data$d, rho = train_data$rho, tau = train_data$tau,
+  iota = train_data$iota, hyperparameters = hyperparameters,
+  initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
+  initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
+  initial_rstar = init_rstar_train, N = N_train, M = M,
+  K = K, epsilon = epsilon,
+  mu0 = mu0, sigma20 = sigma20,
+  sex = train_data$sex,
+  birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
+  female_conds = train_data$female_conds, cond_list = cond_list
+)
 
-# # Save the trained posterior.
-# saveRDS(posterior_train, file = "src/resultsmixeddatatwelth/posterior_val_delay_train.rds")
-posterior_train <- readRDS("src/resultsmixeddatatwelth/posterior_val_delay_train.rds")
+# Save the trained posterior.
+saveRDS(posterior_train, file = "src/elbonew/posterior_val_delay_train.rds")
+posterior_train <- readRDS("src/elbonew/posterior_val_delay_train.rds")
 
 # Source delay aware predictive utilities.
 source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
@@ -206,7 +206,7 @@ for (i in 1:N_test) {
     tau_i = test_data$tau[i],
     M = M
   )
-  pred <- VB_gaussian_predictive_density(
+  pred <- VB_gaussian_predictive_density_d(
     hyperparameters = hyper_post,
     M_obs  = vview$M_obs,
     M_part = vview$M_part,
@@ -269,7 +269,7 @@ for (i in 1:N_test) {
     tau_i = cut_i,     # Pre cut window ends at the current age.
     M = M
   )
-  pred <- VB_gaussian_predictive_density(
+  pred <- VB_gaussian_predictive_density_d(
     hyperparameters = hyper_post,
     M_obs  = vview$M_obs,
     M_part = vview$M_part,
@@ -297,7 +297,7 @@ for (i in 1:N_test) {
   pred  <- pred_list_pre[[i]]
 
   # Mix using the cluster weights from the predictive parameters.
-  probs_i <- probability_LTHC_by_T(
+  probs_i <- probability_LTHC_by_T_d(
     parameters = pred,
     hyperparameters = hyper_post,
     T = T_i, tau = cut_i, M = M,
@@ -307,7 +307,7 @@ for (i in 1:N_test) {
   P_after[i, ] <- probs_i
 
   # Compute expected time after the cut.
-  Et_i <- expected_LTHC_t_after_tau(
+  Et_i <- expected_LTHC_t_after_tau_d(
     parameters = pred,
     hyperparameters = hyper_post,
     tau = cut_i,
@@ -359,7 +359,7 @@ cat("  Diagnosis age MAE (observed after-cut events):",
 cat("NO-DELAY BASELINE — test script \n")
 
 # Source the original no delay implementation.
-source("src/functions/ProMOTe_VB.R")           # VB_gaussian_update_old.
+source("src/functions/ProMOTe_VB_2.R")           # VB_gaussian_update_old.
 source("src/functions/ProMOTe_Predictive.R")   # VB_gaussian_predictive_density.
 source("src/functions/ProMOTe_LTCby.R")        # probability_LTHC_by_T.
 source("src/functions/ProMOTe_LTCt.R")         # expected_LTHC_t_after_tau.
@@ -398,8 +398,8 @@ init_rstar_train <- matrix(runif(N_train * M, 0.01, 0.02), N_train, M)
 # )
 
 # # Save the baseline posterior to disk.
-# saveRDS(fit_nd, file = "src/resultsmixeddatatwelth/posterior_val_no_delay_train.rds")
-fit_nd <- readRDS("src/resultsmixeddatatwelth/posterior_val_no_delay_train.rds")
+# saveRDS(fit_nd, file = "src/elbonew/posterior_val_no_delay_train.rds")
+fit_nd <- readRDS("src/elbonew/posterior_val_no_delay_train.rds")
 
 # Gather posterior parameters for baseline prediction.
 pp <- fit_nd$posterior.parameters

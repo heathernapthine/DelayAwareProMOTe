@@ -137,8 +137,8 @@ posterior_train <- VB_gaussian_update(
 )
 
 # # Save the trained posterior.
-saveRDS(posterior_train, file = "src/resultsonsetdatatwelth/posterior_val_delay_train.rds")
-posterior_train <- readRDS("src/resultsonsetdatatwelth/posterior_val_delay_train.rds")
+saveRDS(posterior_train, file = "src/resultsonsetdata/posterior_val_delay_train.rds")
+posterior_train <- readRDS("src/resultsonsetdata/posterior_val_delay_train.rds")
 
 # Source delay aware predictive utilities.
 source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
@@ -358,7 +358,7 @@ cat("  Diagnosis age MAE (observed after-cut-off events):",
 cat("NO-DELAY BASELINE — test script \n")
 
 # Source the original no delay implementation.
-source("src/functions/ProMOTe_VB.R")           # VB_gaussian_update_old.
+source("src/functions/ProMOTe_VB_2.R")           # VB_gaussian_update_old.
 source("src/functions/ProMOTe_Predictive.R")   # VB_gaussian_predictive_density.
 source("src/functions/ProMOTe_LTCby.R")        # probability_LTHC_by_T.
 source("src/functions/ProMOTe_LTCt.R")         # expected_LTHC_t_after_tau.
@@ -397,8 +397,8 @@ fit_nd <- VB_gaussian_update(
 )
 
 # # Save the baseline posterior to disk.
-saveRDS(fit_nd, file = "src/resultsonsetdatatwelth/posterior_val_no_delay_train.rds")
-fit_nd <- readRDS("src/resultsonsetdatatwelth/posterior_val_no_delay_train.rds")
+saveRDS(fit_nd, file = "src/resultsonsetdata/posterior_val_no_delay_train.rds")
+fit_nd <- readRDS("src/resultsonsetdata/posterior_val_no_delay_train.rds")
 
 # Gather posterior parameters for baseline prediction.
 pp <- fit_nd$posterior.parameters

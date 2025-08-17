@@ -12,7 +12,7 @@ library(grid)
 target_cluster <- 1
 
 data_rds_path      <- "data/generated_promote_style_mixed_delays.rds"
-posterior_delay_rds<- "src/resultsmixeddatatwelth/posterior_val_delay_train.rds"
+posterior_delay_rds<- "src/resultsmixeddata/posterior_val_delay_train.rds"
 directory            <- "src/clustertrajectoryplots/mixeddata"
 
 # Load data and posterior
@@ -241,5 +241,4 @@ if (length(top_conds) > 0) {
   dir.create(directory, recursive = TRUE, showWarnings = FALSE)
   ggsave(file.path(directory, sprintf("cluster_%d_onset_hist_lines_by_condition.png", target_cluster)),
          p_onset_by_cond, width = 10, height = 6, dpi = 300)
-  message("Saved onset plot with coloured bars + lines.")
 } 

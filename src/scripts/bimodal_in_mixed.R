@@ -28,8 +28,8 @@ dir.create("results", showWarnings = FALSE, recursive = TRUE)
 
 # Load data & trained posteriors 
 data_all        <- readRDS("data/generated_promote_style_mixed_delays.rds")
-posterior_delay <- readRDS("src/resultsmixeddatatwelth/posterior_val_delay_train.rds")
-posterior_base  <- readRDS("src/resultsmixeddatatwelth/posterior_val_no_delay_train.rds")
+posterior_delay <- readRDS("src/resultsmixeddata/posterior_val_delay_train.rds")
+posterior_base  <- readRDS("src/resultsmixeddata/posterior_val_no_delay_train.rds")
 
 # Train/test split (reproduced) 
 n_total   <- nrow(data_all$d)

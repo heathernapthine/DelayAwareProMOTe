@@ -164,7 +164,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
   cat("\n")
   
   #perform updates
-  while(param_difference > epsilon && n_steps < 70) {
+  while(param_difference > epsilon) {
     
     n_steps <- n_steps + 1
     
@@ -299,34 +299,80 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
     elbo_musig_prior <- elbo_musig_prior_const - sum((alpha_hyper+3/2)*expected_log_sigma_squared) - sum(beta_hyper*expected_sigma2_inverse) - sum((v_hyper/2) * expected_mu2_sigma2) + sum(u_hyper*v_hyper*expected_mu_sigma2) - sum((((u_hyper**2)*v_hyper)/2) * expected_sigma2_inverse)
     if(n_steps>1) elbo_likelihood_old <- elbo_likelihood
 
+        #### =========================
+    #### ELBO (moment-matched; aligned with updates, no delays)
+    #### =========================
+
     log2pi <- log(2 * pi)
-    elbo_likelihood <- sum(expected_z %*% expected_log_gamma) +
+
+    # --- Prior contributions over globals (same conjugate forms) ---
+    elbo_gamma_prior <- elbo_gamma_prior_const + sum((theta_hyper - 1) * expected_log_gamma)
+
+    elbo_pi_prior    <- elbo_pi_prior_const +
+                        sum((a_hyper - 1) * expected_log_pi) +
+                        sum((b_hyper - 1) * expected_log_pi_complement)
+
+    # NOTE: keep expected_mu2_sigma2 exactly as defined earlier in your code.
+    elbo_musig_prior <- elbo_musig_prior_const -
+                        sum((alpha_hyper + 3/2) * expected_log_sigma_squared) -
+                        sum(beta_hyper * expected_sigma2_inverse) -
+                        sum((v_hyper / 2) * expected_mu2_sigma2) +
+                        sum(u_hyper * v_hyper * expected_mu_sigma2) -
+                        sum((((u_hyper^2) * v_hyper) / 2) * expected_sigma2_inverse)
+
+    # --- Likelihood under the same quadratic surrogate used in updates ---
+    # Censoring enters only through expected_t and expected_t2 (truncated-moment E-steps).
+    ones_KM <- matrix(1, K, M)
+    elbo_likelihood <-
+      sum(expected_z %*% expected_log_gamma) +
       sum(expected_d * (expected_z %*% t(expected_log_pi))) +
       sum((1 - expected_d) * (expected_z %*% t(expected_log_pi_complement))) -
-      0.5 * log2pi * sum(expected_d * (expected_z %*% matrix(1, K, M))) -
-      0.5 * sum(expected_d * (expected_z %*% t(expected_log_sigma_squared))) -
-      0.5 * sum(expected_d * (expected_z %*% t(expected_mu2_sigma2))) +
-      sum(expected_dt * (expected_z %*% t(expected_mu_sigma2))) -
+      0.5 * log2pi * sum(expected_d * (expected_z %*% ones_KM)) -
+      0.5 * sum(expected_d  * (expected_z %*% t(expected_log_sigma_squared))) -
+      0.5 * sum(expected_d  * (expected_z %*% t(expected_mu2_sigma2))) +
+      sum(expected_dt  * (expected_z %*% t(expected_mu_sigma2))) -
       0.5 * sum(expected_dt2 * (expected_z %*% t(expected_sigma2_inverse)))
 
-    if(n_steps>1) elbo_qgamma_old <- elbo_qgamma
-    elbo_qgamma <- lgamma(sum(theta_star)) - sum(lgamma(theta_star)) + sum((theta_star-1)*expected_log_gamma)
-    if(n_steps>1) elbo_qpi_old <- elbo_qpi
-    elbo_qpi <- sum(lgamma(a_star+b_star)) - sum(lgamma(a_star)) - sum(lgamma(b_star)) + sum((a_star-1)*expected_log_pi) + sum((b_star-1)*expected_log_pi_complement)
-    if(n_steps>1) elbo_qmusig_old <- elbo_qmusig
-    elbo_qmusig <- 0.5*sum(log(v_star)) - 0.5*sum(log(2*pi)) + sum(alpha_star*log(beta_star)) - sum(lgamma(alpha_star)) - sum((alpha_star+3/2)*expected_log_sigma_squared) - sum(beta_star*expected_sigma2_inverse) - sum((v_star/2) * expected_mu2_sigma2) + sum(u_star*v_star*expected_mu_sigma2) - sum((((u_star**2)*v_star)/2) * expected_sigma2_inverse)
-    if(n_steps>1) elbo_qz_old <- elbo_qz
-    elbo_qz <- sum(expected_z * log(expected_z))
-    if(n_steps>1) elbo_qd_old <- elbo_qd
-    elbo_qd <- sum((expected_d * log(expected_d))[right_censored]) + sum(((1-expected_d)*log(1-expected_d))[right_censored])
-    if(n_steps>1) elbo_qt_old <- elbo_qt
-    elbo_qt <- elbo_qt_const - 0.5*log(1/(2*r_star)) - r_star*expected_t2 + q_star*expected_t - (q_star**2)/(4*r_star)
-    elbo_qt_left <- left_censored*(elbo_qt - pnorm(rho, q_star/(2*r_star), sqrt(1/(2*r_star)), log.p = TRUE))
-    elbo_qt_right <- right_censored*(elbo_qt  - pnorm(tau, q_star/(2*r_star), sqrt(1/(2*r_star)), log.p = TRUE, lower.tail = FALSE))
-    elbo_qt <- sum(elbo_qt_left) + sum(elbo_qt_right)
-    
-    elbo <- elbo_gamma_prior + elbo_pi_prior + elbo_musig_prior + elbo_likelihood - elbo_qgamma - elbo_qpi - elbo_qmusig - elbo_qz - elbo_qd - elbo_qt
+    # --- Entropies of variational globals ---
+    elbo_qgamma <- lgamma(sum(theta_star)) - sum(lgamma(theta_star)) +
+                   sum((theta_star - 1) * expected_log_gamma)
+
+    elbo_qpi    <- sum(lgamma(a_star + b_star)) - sum(lgamma(a_star)) - sum(lgamma(b_star)) +
+                   sum((a_star - 1) * expected_log_pi) +
+                   sum((b_star - 1) * expected_log_pi_complement)
+
+    elbo_qmusig <- 0.5 * sum(log(v_star)) - 0.5 * sum(log(2 * pi)) +
+                   sum(alpha_star * log(beta_star)) - sum(lgamma(alpha_star)) -
+                   sum((alpha_star + 3/2) * expected_log_sigma_squared) -
+                   sum(beta_star * expected_sigma2_inverse) -
+                   sum((v_star / 2) * expected_mu2_sigma2) +
+                   sum(u_star * v_star * expected_mu_sigma2) -
+                   sum((((u_star^2) * v_star) / 2) * expected_sigma2_inverse)
+
+    # --- Entropies of responsibilities and (only where variational) diagnoses ---
+    expected_z_safe <- pmax(expected_z, 1e-15)
+    elbo_qz <- -sum(expected_z * log(expected_z_safe))
+
+    expected_d_safe <- pmax(pmin(expected_d, 1 - 1e-15), 1e-15)
+    elbo_qd <- 0
+    if (sum(right_censored) > 0) {
+      elbo_qd <- -sum(expected_d[right_censored] * log(expected_d_safe[right_censored]) +
+                      (1 - expected_d[right_censored]) * log(1 - expected_d_safe[right_censored]))
+    }
+
+    # --- Full ELBO (no q(t) factor, no CDF terms) ---
+    elbo <- elbo_gamma_prior +
+            elbo_pi_prior +
+            elbo_musig_prior +
+            elbo_likelihood -
+            elbo_qgamma -
+            elbo_qpi -
+            elbo_qmusig -
+            elbo_qz -
+            elbo_qd
+
     elbos[n_steps] <- elbo
+
     
     #Update stopping condition difference
     if(n_steps>1) param_difference <- mean(abs(theta_star/sum(theta_star) - theta_star_old/sum(theta_star_old))) + mean(abs(a_star/(a_star+b_star) - a_star_old/(a_star_old + b_star_old))) + mean(abs(2*alpha_star - 2*alpha_star_old)) + mean(abs(u_star - u_star_old)) + mean(abs((beta_star*(v_star+1))/(alpha_star*v_star) - (beta_star_old*(v_star_old+1))/(alpha_star_old * v_star_old)))
