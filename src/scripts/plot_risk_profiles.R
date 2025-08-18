@@ -1,3 +1,6 @@
+# Purpose: Visualise cluster-specific trajectories (mean onset/diagnosis errors and onset distributions by condition) 
+# from the delay-aware posterior. 
+
 library(dplyr)
 library(tidyr)
 library(ggplot2)

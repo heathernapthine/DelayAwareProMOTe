@@ -1,3 +1,5 @@
+# Purpose: Summarise censoring patterns (left/right) per cluster in the synthetic onset-time dataset.
+
 library(dplyr)
 library(tidyr)
 library(readr)

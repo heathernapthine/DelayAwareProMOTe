@@ -1,3 +1,6 @@
+# Purpose: Generate ablation study figures (cluster recovery vs prior scale,
+# and shrinkage SR_w by prior scale and delay family) using ggplot2.
+
 library(ggplot2)
 library(dplyr)
 library(readr)

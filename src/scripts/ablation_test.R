@@ -1,3 +1,6 @@
+# Purpose: Run prior-strength ablation study on the delay-aware VB model (train/test split, clustering, 
+# forward prediction, shrinkage metrics) and save results to CSV.
+
 set.seed(42)
 
 library(mclust)

@@ -5,6 +5,16 @@ VB_gaussian_predictive_density_d <- function(
   rho, tau, M,
   mu0, sigma20   # New for delay model: delay prior (length M)
 ) {
+
+ # Purpose: Posterior cluster responsibilities and predictive pieces from partial observations
+#   under delay-aware model (Y = onset + gap with truncated-normal delay).
+# Inputs: hyperparameters (theta,a,b,u,v,alpha,beta);
+#   M_obs, M_part, M_unobs; d_obs, t_obs, d_part; rho, tau, M; mu0, sigma20.
+# Outputs: list(phi = posterior cluster probs,
+#               eta = P(event after tau | cluster, condition),
+#               varpi = P(condition present | cluster)).
+
+
   # Unpack posteriors (M x K except theta)
   theta <- hyperparameters[[1]]
   a     <- hyperparameters[[2]]
@@ -21,22 +31,6 @@ VB_gaussian_predictive_density_d <- function(
   # Presence probability per condition/cluster
   varpi <- a / (a + b)  
 
-#   # Delay-aware location/scale for observed time Y = onset + delay
-#   # onset predictive variance
-#   sig_onset <- (beta * (v + 1)) / (alpha * v)   
-
-#   # broadcast delay prior across clusters
-#   mu_gap    <- matrix(mu0,     nrow = M, ncol = ncol(u))
-#   sig_gap2  <- matrix(sigma20, nrow = M, ncol = ncol(u))
-
-#   muY   <- u + mu_gap                          
-#   sigY2 <- sig_onset + sig_gap2                
-#   sdY   <- sqrt(pmax(sigY2, 1e-12)) # guard
-
-# CDFs for window edges under Y ~ t_{2*alpha}(muY, sdY)
-#   Ftau <- matrix(pt((tau - muY) / sdY, df = 2 * alpha), nrow = M)
-#   Frho <- matrix(pt((rho - muY) / sdY, df = 2 * alpha), nrow = M)
-
   # Delay-aware location/scale for observed time Y = onset + delay
   # onset predictive variance
   sig_onset <- (beta * (v + 1)) / (alpha * v)
@@ -44,7 +38,7 @@ VB_gaussian_predictive_density_d <- function(
   # broadcast *truncated* delay moments across clusters
   sigma0    <- sqrt(pmax(sigma20, 1e-12))
   alpha_del <- -mu0 / sigma0
-  # stable lambda(α) = φ(α) / (1 - Φ(α))
+  # stable lambda(alpha) = φ(alpha) / (1 - Φ(alpha))
   lambda <- exp(dnorm(alpha_del, log = TRUE) -
                 pnorm(alpha_del, lower.tail = FALSE, log.p = TRUE))
   delta  <- lambda * (lambda - alpha_del)

@@ -1,14 +1,11 @@
 probability_LTHC_by_T_d <- function(parameters, hyperparameters, T, tau, M, 
                                   mu0, sigma20) {
-  # Inputs:
-  # - parameters: list(phi, eta, varpi) from VB_gaussian_predictive_density()
-  # - hyperparameters: list(theta, a, b, u, v, alpha, beta) (all M x K except theta)
-  # - T: end-of-window time (predict "by T")
-  # - tau: start-of-window (e.g., current/cut age)
-  # - mu0, sigma20: delay prior (length M)
-  #
-  # Output:
-  # - vector length M with P(event occurs in (tau, T]) mixed over clusters
+
+# Purpose: Predict P(diagnosed in (tau, T]] for each condition under delay-aware model.
+# Inputs: parameters = list(phi, eta); hyperparameters (u,v,alpha,beta);
+#   T, tau, M; delay priors mu0, sigma20.
+# Outputs: prob_m (length M) = probability of diagnosis by T given survival past tau,
+#   marginalised over clusters using phi.
 
   phi   <- parameters[[1]]          
   eta   <- parameters[[2]]            
@@ -19,18 +16,6 @@ probability_LTHC_by_T_d <- function(parameters, hyperparameters, T, tau, M,
   beta  <- hyperparameters[[7]]       
 
   K <- ncol(u)
-
-#   # Predictive for observed time Y = onset + delay
-#   sig_onset <- (beta * (v + 1)) / (alpha * v)                 
-#   mu_gap    <- matrix(mu0,     nrow = M, ncol = K)
-#   sig_gap2  <- matrix(sigma20, nrow = M, ncol = K)
-
-#   muY  <- u + mu_gap                                          
-#   sdY  <- sqrt(pmax(sig_onset + sig_gap2, 1e-12))             
-
-#   # CDFs under location-scale Student-t with df = 2*alpha
-#   Ftau <- matrix(pt((tau - muY) / sdY, df = 2 * alpha), nrow = M)
-#   FT   <- matrix(pt((T   - muY) / sdY, df = 2 * alpha), nrow = M)
 
   # Predictive for observed time Y = onset + delay (with *truncated* delay moments)
   sig_onset <- (beta * (v + 1)) / (alpha * v)

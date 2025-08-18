@@ -152,6 +152,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
   elbo_musig_prior_const <- 0.5 * sum(log(v_hyper)) - 0.5*sum(log(2*pi)) + sum(alpha_hyper*log(beta_hyper)) - sum(lgamma(alpha_hyper))
   elbo_qt_const <- -0.5*log(2*pi)
   elbos <- rep(NA, 20000)
+  param_differences <- rep(NA, 20000)
   
   
   cat("n_steps")
@@ -164,7 +165,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
   cat("\n")
   
   #perform updates
-  while(param_difference > epsilon) {
+  while(param_difference > epsilon && n_steps <70) {
     
     n_steps <- n_steps + 1
     
@@ -299,13 +300,10 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
     elbo_musig_prior <- elbo_musig_prior_const - sum((alpha_hyper+3/2)*expected_log_sigma_squared) - sum(beta_hyper*expected_sigma2_inverse) - sum((v_hyper/2) * expected_mu2_sigma2) + sum(u_hyper*v_hyper*expected_mu_sigma2) - sum((((u_hyper**2)*v_hyper)/2) * expected_sigma2_inverse)
     if(n_steps>1) elbo_likelihood_old <- elbo_likelihood
 
-        #### =========================
-    #### ELBO (moment-matched; aligned with updates, no delays)
-    #### =========================
-
+    #ELBO 
     log2pi <- log(2 * pi)
 
-    # --- Prior contributions over globals (same conjugate forms) ---
+    # Prior contributions over globals (same conjugate forms)
     elbo_gamma_prior <- elbo_gamma_prior_const + sum((theta_hyper - 1) * expected_log_gamma)
 
     elbo_pi_prior    <- elbo_pi_prior_const +
@@ -320,7 +318,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
                         sum(u_hyper * v_hyper * expected_mu_sigma2) -
                         sum((((u_hyper^2) * v_hyper) / 2) * expected_sigma2_inverse)
 
-    # --- Likelihood under the same quadratic surrogate used in updates ---
+    # Likelihood under the same quadratic surrogate used in updates
     # Censoring enters only through expected_t and expected_t2 (truncated-moment E-steps).
     ones_KM <- matrix(1, K, M)
     elbo_likelihood <-
@@ -333,7 +331,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
       sum(expected_dt  * (expected_z %*% t(expected_mu_sigma2))) -
       0.5 * sum(expected_dt2 * (expected_z %*% t(expected_sigma2_inverse)))
 
-    # --- Entropies of variational globals ---
+    # Entropies of variational globals 
     elbo_qgamma <- lgamma(sum(theta_star)) - sum(lgamma(theta_star)) +
                    sum((theta_star - 1) * expected_log_gamma)
 
@@ -349,7 +347,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
                    sum(u_star * v_star * expected_mu_sigma2) -
                    sum((((u_star^2) * v_star) / 2) * expected_sigma2_inverse)
 
-    # --- Entropies of responsibilities and (only where variational) diagnoses ---
+    # Entropies of responsibilities and (only where variational) diagnoses
     expected_z_safe <- pmax(expected_z, 1e-15)
     elbo_qz <- -sum(expected_z * log(expected_z_safe))
 
@@ -360,7 +358,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
                       (1 - expected_d[right_censored]) * log(1 - expected_d_safe[right_censored]))
     }
 
-    # --- Full ELBO (no q(t) factor, no CDF terms) ---
+    # Full ELBO (no q(t) factor, no CDF terms)
     elbo <- elbo_gamma_prior +
             elbo_pi_prior +
             elbo_musig_prior +
@@ -372,6 +370,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
             elbo_qd
 
     elbos[n_steps] <- elbo
+    param_differences[n_steps] <- param_difference
 
     
     #Update stopping condition difference
@@ -387,9 +386,9 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
     cat(elbo)
     cat("\n")
   }
-  elbos <- elbos[1:n_steps]
+  
   #Return outputs
-  return(list(posterior.parameters = list(theta_star = theta_star, a_star = a_star, b_star = b_star, u_star = u_star, v_star = v_star, alpha_star = alpha_star, beta_star = beta_star, C_star = C_star, p_star = p_star, q_star = q_star, r_star = r_star, D_star = D_star, expected_t = expected_t), n_steps = n_steps, final_step_size = param_difference, elbo = elbos[1:n_steps], cond_list = cond_list))
+  return(list(posterior.parameters = list(theta_star = theta_star, a_star = a_star, b_star = b_star, u_star = u_star, v_star = v_star, alpha_star = alpha_star, beta_star = beta_star, C_star = C_star, p_star = p_star, q_star = q_star, r_star = r_star, D_star = D_star, expected_t = expected_t), n_steps = n_steps, final_step_size = param_difference, elbo = elbos[1:n_steps], param_diffs = param_differences[1:n_steps], cond_list = cond_list))
   
 }
 

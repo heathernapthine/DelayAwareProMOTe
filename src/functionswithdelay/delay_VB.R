@@ -6,6 +6,17 @@ VB_gaussian_update_d <- function(
   sex = NULL, birth_conds = NULL, male_conds = NULL, female_conds = NULL, cond_list
 ) {
 
+# Purpose: VB updates for the delay-aware Gaussian latent class model with censored data.
+#   Observed time t_obs = onset + gap (gap >= 0 with per-condition prior).
+# Inputs: d, t_obs, rho, tau, iota, hyperparameters (theta,a,b,u,v,alpha,beta),
+#   initial_{C,D,p,q,r}, N, M, K, epsilon, mu0, sigma20,
+#   sex, birth_conds, male_conds, female_conds, cond_list.
+# Outputs: posterior parameters (theta_star, a_star, b_star, u_star, v_star,
+#   alpha_star, beta_star), patient-level (C_star, p_star, q_star, r_star, D_star),
+#   delay posteriors (gap_mu_star, gap_sigma2_star), expectations (expected_t, expected_d),
+#   diagnostics: n_steps, final_step_size, elbo, param_diffs, cond_list.
+
+
   # Unpack hyperparameters.
   theta_hyper <- hyperparameters[[1]]
   a_hyper     <- hyperparameters[[2]]
@@ -72,8 +83,9 @@ VB_gaussian_update_d <- function(
   expected_d <- D_star / (1 + D_star)
   expected_d <- ((1 - (d == 0 & iota == 0)) * d) + ((d == 0 & iota == 0) * expected_d)
 
-  # Allocate ELBO storage.
+
   elbos <- rep(NA_real_, 20000)
+  param_differences <- rep(NA_real_, 20000)
 
   # Precompute ELBO prior constants.
   elbo_gamma_prior_const <- lgamma(sum(theta_hyper)) - sum(lgamma(theta_hyper))
@@ -81,7 +93,7 @@ VB_gaussian_update_d <- function(
   elbo_musig_prior_const <- 0.5 * sum(log(v_hyper)) - 0.5 * sum(log(2 * pi)) +
                             sum(alpha_hyper * log(beta_hyper)) - sum(lgamma(alpha_hyper))
 
-  while (param_difference > 0.1) {
+  while (param_difference > 0.1 && n_steps < 70) {
     n_steps <- n_steps + 1
 
     # Update gap moments under truncated normal and derive onset time.
@@ -210,12 +222,10 @@ VB_gaussian_update_d <- function(
     # Quick progress diagnostic.
     cat(n_steps, param_difference, "\n")
 
-    #### =========================
-    #### ELBO (moment-matched; aligned with updates)
-    #### =========================
+    # ELBO 
     log2pi <- log(2 * pi)
 
-    # Priors over globals (same forms as before).
+    # Priors over globals.
     elbo_gamma_prior <- elbo_gamma_prior_const + sum((theta_hyper - 1) * expected_log_gamma)
     elbo_pi_prior    <- elbo_pi_prior_const +
                         sum((a_hyper - 1) * expected_log_pi) +
@@ -286,6 +296,7 @@ VB_gaussian_update_d <- function(
             kl_qgap_pgap
 
     elbos[n_steps] <- elbo
+    param_differences[n_steps] <- param_difference
   }
 
   # Return posterior parameters and diagnostics.
@@ -313,6 +324,7 @@ VB_gaussian_update_d <- function(
     n_steps = n_steps,
     final_step_size = param_difference,
     elbo = elbos[1:n_steps],
+    param_diffs = param_differences[1:n_steps],
     cond_list = cond_list
   ))
 }

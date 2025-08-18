@@ -1,3 +1,6 @@
+# Purpose: Train and evaluate delay-aware vs baseline ProMOTe models (cluster recovery, forward prediction, 
+# diagnosis MAE) on mixed-delay synthetic data. 
+
 set.seed(42)
 
 library(mclust)     
@@ -11,7 +14,7 @@ library(clue)
 library(MCMCpack) 
 
 # Get the delay aware VB implementation.
-source("src/functionswithdelay/delay_VB_2.R")  # VB_gaussian_update().
+source("src/functionswithdelay/delay_VB.R")  # VB_gaussian_update().
 
 data_all <- readRDS("data/generated_promote_style_mixed_delays.rds")
 
@@ -63,13 +66,7 @@ epsilon <- 0.1
 M <- train_data$M
 cond_list <- train_data$cond_list
 
-# # Build generic delay priors for each condition.
-# delay_mu <- rtruncnorm(M, a = 0, mean = 10, sd = 0.1)
-# delay_sd <- rep(0.2, M)
-# delay_mu <- rep(10, M)#truncnorm::rtruncnorm(M, a = 0, mean = 5, sd = 1)  # Bigger mean and spread.
-# delay_sd <- rep(1, M)
-# mu0 <- delay_mu
-# sigma20 <- (delay_sd)^2
+
 
 # More complex prior setting for mixed prior dataset.
 df <- train_data$delay_prior_df
@@ -138,8 +135,8 @@ posterior_train <- VB_gaussian_update_d(
 )
 
 # Save the trained posterior.
-saveRDS(posterior_train, file = "src/elbonew/posterior_val_delay_train.rds")
-posterior_train <- readRDS("src/elbonew/posterior_val_delay_train.rds")
+saveRDS(posterior_train, file = "src/resultsmixeddata/posterior_val_delay_train.rds")
+posterior_train <- readRDS("src/resultsmixeddata/posterior_val_delay_train.rds")
 
 # Source delay aware predictive utilities.
 source("src/functionswithdelay/ProMOTe_LTCby_delay.R")      # probability_LTHC_by_T().
@@ -359,7 +356,7 @@ cat("  Diagnosis age MAE (observed after-cut events):",
 cat("NO-DELAY BASELINE — test script \n")
 
 # Source the original no delay implementation.
-source("src/functions/ProMOTe_VB_2.R")           # VB_gaussian_update_old.
+source("src/functions/ProMOTe_VB.R")           # VB_gaussian_update_old.
 source("src/functions/ProMOTe_Predictive.R")   # VB_gaussian_predictive_density.
 source("src/functions/ProMOTe_LTCby.R")        # probability_LTHC_by_T.
 source("src/functions/ProMOTe_LTCt.R")         # expected_LTHC_t_after_tau.
@@ -385,21 +382,21 @@ init_pstar_train <- matrix(runif(N_train * M, 0, 10), N_train, M)
 init_qstar_train <- matrix(runif(N_train * M, 1, 2),  N_train, M)
 init_rstar_train <- matrix(runif(N_train * M, 0.01, 0.02), N_train, M)
 
-# fit_nd <- VB_gaussian_update(
-#   d = train_data$d, t = train_data$t, rho = train_data$rho, tau = train_data$tau, iota = train_data$iota,
-#   hyperparameters = hyperparameters,
-#   initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
-#   initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
-#   initial_rstar = init_rstar_train,
-#   N = N_train, M = M, K = K, epsilon = epsilon,
-#   sex = train_data$sex,
-#   birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
-#   female_conds = train_data$female_conds, cond_list = cond_list
-# )
+fit_nd <- VB_gaussian_update(
+  d = train_data$d, t = train_data$t, rho = train_data$rho, tau = train_data$tau, iota = train_data$iota,
+  hyperparameters = hyperparameters,
+  initial_Cstar = init_Cstar_train, initial_Dstar = init_Dstar_train,
+  initial_pstar = init_pstar_train, initial_qstar = init_qstar_train,
+  initial_rstar = init_rstar_train,
+  N = N_train, M = M, K = K, epsilon = epsilon,
+  sex = train_data$sex,
+  birth_conds = train_data$birth_conds, male_conds = train_data$male_conds,
+  female_conds = train_data$female_conds, cond_list = cond_list
+)
 
-# # Save the baseline posterior to disk.
-# saveRDS(fit_nd, file = "src/elbonew/posterior_val_no_delay_train.rds")
-fit_nd <- readRDS("src/elbonew/posterior_val_no_delay_train.rds")
+# Save the baseline posterior to disk.
+saveRDS(fit_nd, file = "src/resultsmixeddata/posterior_val_no_delay_train.rds")
+fit_nd <- readRDS("src/resultsmixeddata/posterior_val_no_delay_train.rds")
 
 # Gather posterior parameters for baseline prediction.
 pp <- fit_nd$posterior.parameters

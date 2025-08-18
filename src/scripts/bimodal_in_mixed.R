@@ -1,3 +1,6 @@
+# Purpose: Compare delay-aware vs baseline ProMOTe models on bimodal-delay data (cluster recovery,
+# diagnosis MAE for late patients, chi-square separation) and save results/plots.
+
 set.seed(42)
 
 library(mclust)

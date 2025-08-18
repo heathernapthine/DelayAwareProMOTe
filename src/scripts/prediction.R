@@ -1,3 +1,5 @@
+# Purpose: Train and evaluate delay-aware vs baseline ProMOTe models on onset-style synthetic data (cluster recovery,
+# forward prediction, diagnosis MAE).
 set.seed(42)
 
 library(mclust)     
@@ -136,7 +138,7 @@ posterior_train <- VB_gaussian_update(
   female_conds = train_data$female_conds, cond_list = cond_list
 )
 
-# # Save the trained posterior.
+# Save the trained posterior.
 saveRDS(posterior_train, file = "src/resultsonsetdata/posterior_val_delay_train.rds")
 posterior_train <- readRDS("src/resultsonsetdata/posterior_val_delay_train.rds")
 
@@ -396,7 +398,7 @@ fit_nd <- VB_gaussian_update(
   female_conds = train_data$female_conds, cond_list = cond_list
 )
 
-# # Save the baseline posterior to disk.
+# Save the baseline posterior to disk.
 saveRDS(fit_nd, file = "src/resultsonsetdata/posterior_val_no_delay_train.rds")
 fit_nd <- readRDS("src/resultsonsetdata/posterior_val_no_delay_train.rds")
 

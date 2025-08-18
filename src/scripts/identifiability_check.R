@@ -1,3 +1,6 @@
+# Purpose: Evaluate identifiability in the delay-aware model via prior-strength swap 
+# correlations and across-settings invariance, saving results to CSV. 
+
 identifiability_swap_grid <- function(
   data_path  = "data/generated_promote_style_mixed_delays.rds",
   directory  = "src/ablationresultsnew",

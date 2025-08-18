@@ -1,8 +1,7 @@
 expected_lst_lefttrunc_d <- function(df, mu, sigma, tau) {
-  # Expectation of a left-truncated location-scale Student-t:
-  # E[X | X > tau],  X = mu + sigma * T_df
-  #
-  # Works with scalars, vectors, or MxK matrices. Uses stable log-space math.
+# Purpose: E[Y | Y > tau] for a Student-t with df, mu, sigma (vectorised; stable).
+# Inputs: df (>1), mu, sigma, tau (broadcastable).
+# Outputs: u = conditional mean(s) after truncation (same shape as mu).
 
   # Guard rails
   sigma <- pmax(sigma, 1e-12)  
