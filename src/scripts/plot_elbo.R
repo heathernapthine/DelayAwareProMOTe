@@ -55,7 +55,7 @@ ggsave("src/plots/fig_elbo_comparison.png", p, width = 8, height = 4.5, units = 
 
 library(ggplot2)
 
-# put into one data frame
+# Put into one data frame.
 df <- data.frame(
   iter       = seq_along(elbo_delay),
   elbo       = elbo_delay,

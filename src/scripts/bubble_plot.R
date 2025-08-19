@@ -287,6 +287,6 @@ p_bar_right <- ggplot(bar_df, aes(y = cluster, x = mass_share, fill = cluster)) 
 
 # Combine & save.
 combo <- p_bubbles + p_bar_right + patchwork::plot_layout(widths = c(8, 1.2))
-ggsave("src/plots/test_inferred_prevalence.png", combo, width = 12, height = 6, dpi = 300)
+ggsave("src/plots/bubble_plot.png", combo, width = 12, height = 6, dpi = 300)
 
 
