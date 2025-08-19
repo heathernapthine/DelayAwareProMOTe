@@ -150,6 +150,18 @@ baseline_test <- colMeans(test_data$d)
 baseline_safe <- pmax(baseline_test, 1e-8)
 
 relative_risk_test <- sweep(prevalence_test, 1, baseline_safe, "/")
+
+# --- Discretise Relative Risk for legend ---------------------------------------
+RR <- pmax(as.vector(relative_risk_test), 1e-12)
+RR_cat_vec <- cut(
+  RR,
+  breaks = c(-Inf, 0.5, 2, Inf),                 # thresholds
+  labels = c("Less than Half", "Baseline", "Double"),
+  right = FALSE
+)
+RR_cat_vec <- factor(RR_cat_vec,
+                     levels = c("Less than Half", "Baseline", "Double"))
+
 eps <- 1e-8
 log_rr <- log(pmax(relative_risk_test, eps))
 log_rr_cap <- 2 # ~ 7.4x up / 0.14x down
@@ -157,11 +169,12 @@ log_rr <- pmax(pmin(log_rr,  log_rr_cap), -log_rr_cap)
 
 # Build the full long DF first, including a shorter condition id to avoid label collisions.
 prevalence_df <- data.frame(
-  cond_id   = rep(seq_len(M), times = K_plot),                       # <-- NEW
-  cluster   = factor(rep(cluster_labels, each = M), levels = cluster_labels),
-  condition = rep(cond_labels, times = K_plot),
+  cond_id    = rep(seq_len(M), times = K_plot),
+  cluster    = factor(rep(cluster_labels, each = M), levels = cluster_labels),
+  condition  = rep(cond_labels, times = K_plot),
   prevalence = as.vector(pmax(prevalence_test, 0)),
-  log_rr     = as.vector(log_rr)
+  log_rr     = as.vector(log_rr),     # keep if you still want it for diagnostics
+  rr_cat     = RR_cat_vec             # NEW: discrete RR category
 )
 
 # Pick HALF the conditions for plotting (reproducible) 
@@ -203,10 +216,12 @@ stripe_layer <- ggforestplot::geom_stripes(
 )
 
 # Bubble plot (conditions on x; clusters on y)
+# Bubble plot (conditions on x; clusters on y) with discrete RR legend
 p_bubbles <- ggplot(prevalence_df, aes(x = condition, y = cluster)) +
   stripe_layer +
-  geom_point(aes(size = prevalence, alpha = log_rr, colour = cluster)) +
-  geom_point(aes(size = prevalence, colour = cluster), shape = 1, stroke = 0.3, alpha = 1) +
+  # shape 21 allows fill (RR category) + outline (cluster colour)
+  geom_point(aes(size = prevalence, fill = rr_cat, colour = cluster),
+             shape = 21, stroke = 0.4) +
   scale_size_continuous(
     name = "Disease Prevalence",
     range = c(0.5, 6),
@@ -214,21 +229,16 @@ p_bubbles <- ggplot(prevalence_df, aes(x = condition, y = cluster)) +
     breaks = c(0, 0.25, 0.5, 0.75, 1),
     labels = c("0.00","0.25","0.50","0.75","1.00")
   ) +
-  scale_alpha_continuous(
-    name = "log RR",
-    range = c(0.15, 1),
-    limits = c(-log_rr_cap, log_rr_cap),
-    oob = squish,
-    breaks = c(-1, 0, 1),
-    labels = c("-1","0","+1")
+  scale_fill_manual(
+    name = "Relative Risk",
+    values = c("Less than Half" = "grey80",
+               "Baseline"       = "grey50",
+               "Double"         = "grey10")
   ) +
   scale_color_manual(values = pal, guide = "none") +
-  # Ensure cluster order matches the bars (both reversed for top-to-bottom visual)
   scale_y_discrete(limits = rev(levels(prevalence_df$cluster))) +
-  # Keep the chosen conditions in the intended left-to-right order
   scale_x_discrete(limits = levels(prevalence_df$condition)) +
-  labs(x = "Condition", y = "Cluster",
-       title = "Posterior Disease Presence") +
+  labs(x = "Condition", y = "Cluster", title = "Posterior Disease Presence") +
   coord_cartesian(clip = "off") +
   base_theme +
   theme(
@@ -238,25 +248,13 @@ p_bubbles <- ggplot(prevalence_df, aes(x = condition, y = cluster)) +
     plot.title  = element_text(hjust = 0, face = "bold", size = 18),
     panel.grid.major.x = element_blank(),
     panel.grid.minor   = element_blank()
+  ) +
+  guides(
+    size = guide_legend(order = 1,
+                        override.aes = list(shape = 21, fill = "grey85", colour = "grey50")),
+    fill = guide_legend(order = 2)
   )
 
-# Right-hand horizontal bar chart (cluster prevalence)
-p_bar_right <- ggplot(bar_df, aes(y = cluster, x = mass, fill = cluster)) +
-  geom_col(width = 0.9) +
-  scale_fill_manual(values = pal, guide = "none") +
-  # Match y (cluster) ordering to the bubble plot
-  scale_y_discrete(limits = rev(levels(prevalence_df$cluster))) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.02))) +
-  labs(x = NULL, y = NULL) +
-  base_theme +
-  theme(
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    axis.text.x = element_text(size = 9),
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor = element_blank(),
-    plot.margin = margin(t = 10, r = 10, b = 10, l = 0)
-  )
 
 # Combine (bubble + bar chart to the right)
 combo <- p_bubbles + p_bar_right + plot_layout(widths = c(8, 1))
