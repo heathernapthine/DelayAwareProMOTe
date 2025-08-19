@@ -182,9 +182,9 @@ Expected diagnosis time after `tau` under the **baseline** predictive.
 **Outputs:** Vector of expected times (length M).
 
 
-## Repository Layout (key files)
+## Repository Layout
 
-### `data/` — dataset generators (synthetic)
+### `data/` - dataset generators (synthetic)
 - `generate_presence_based_clusters.R`  
   **Purpose:** Presence‑driven clusters; diagnosis = onset + truncated‑normal delay (cluster‑independent).  
   **Output:** `data/generated_presence_promote_style.rds`.
@@ -200,21 +200,21 @@ Expected diagnosis time after `tau` under the **baseline** predictive.
 
 > Train/test splits in downstream scripts use `set.seed(42)` and an 80/20 split (≈160k/40k for `N=200000`).
 
-### `functions/` — baseline (no‑delay)
-- `ProMOTe_VB.R` — `VB_gaussian_update`.
-- `ProMOTe_Predictive.R` — `VB_gaussian_predictive_density`.
-- `ProMOTe_LTCby.R` — `probability_LTHC_by_T`.
-- `ProMOTe_LTCt.R` — `expected_LTHC_t_after_tau`.
-- `ProMOTe_utility.R` — helpers
+### `functions/` - baseline (no‑delay)
+- `ProMOTe_VB.R` - `VB_gaussian_update`.
+- `ProMOTe_Predictive.R` - `VB_gaussian_predictive_density`.
+- `ProMOTe_LTCby.R` - `probability_LTHC_by_T`.
+- `ProMOTe_LTCt.R` - `expected_LTHC_t_after_tau`.
+- `ProMOTe_utility.R` - `expected_lst_lefttrunc`
 
-### `functionswithdelay/` — delay‑aware
-- `delay_VB.R` — `VB_gaussian_update_d`.
-- `ProMOTe_Predictive_delay.R` — `VB_gaussian_predictive_density_d`.
-- `ProMOTe_LTCby_delay.R` — `probability_LTHC_by_T_d`.
-- `ProMOTe_LTCt_delay.R` — `expected_LTHC_t_after_tau_d`.
-- `ProMOTe_utility_delay.R` — helpers.
+### `functionswithdelay/` - delay‑aware
+- `delay_VB.R` - `VB_gaussian_update_d`.
+- `ProMOTe_Predictive_delay.R` - `VB_gaussian_predictive_density_d`.
+- `ProMOTe_LTCby_delay.R` - `probability_LTHC_by_T_d`.
+- `ProMOTe_LTCt_delay.R` - `expected_LTHC_t_after_tau_d`.
+- `ProMOTe_utility_delay.R` - `expected_lst_lefttrunc_d`
 
-### `scripts/` — training, prediction, analysis, plots
+### `scripts/` - training, prediction, analysis, plots
 - `prediction.R`  
   **Purpose:** End‑to‑end baseline vs delay‑aware comparison on mixed‑delay data; cluster recovery, forward prediction, MAE.
 - `prediction_mixed_priors.R`  
@@ -227,8 +227,12 @@ Expected diagnosis time after `tau` under the **baseline** predictive.
   **Purpose:** Per‑cluster left/right censoring summaries from `d`, `t`, `rho`, `tau`, `iota`.
 - `bimodal_in_mixed.R`  
   **Purpose:** Bimodal‑flag analysis on mixed‑delay dataset; chi‑square early/late vs clusters; MAE on late subgroup.
-- `plot_elbo.R`, `plot_risk_profiles.R`, `bubble_plot.R`  
-  **Purpose:** INSERT
+- `plot_elbo.R`  
+  **Purpose:** Compare ELBO trajectories for delay‑aware vs no‑delay models and plot parameter differences against elbo.
+- `plot_risk_profiles.R`  
+  **Purpose:** Visualise cluster‑specific trajectories from the delay‑aware posterior.
+- `bubble_plot.R`  
+  **Purpose:** TEST‑split bubble chart of inferred disease presence by cluster using the delay‑aware posterior.
 
 ### `src/plots/`
 Saved figures from ablations and cluster trajectory visualisations (e.g., prior‑scale vs ARI/NMI, shrinkage boxplots, onset/diagnosis overlays).

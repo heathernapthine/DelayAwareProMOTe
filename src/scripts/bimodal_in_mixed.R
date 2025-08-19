@@ -331,7 +331,7 @@ p2 <- ggplot(df_long_chi, aes(x = reorder(condition, logp, na.rm = TRUE), y = lo
   labs(x = "Condition", y = "-log10(p-value)") +
   theme_classic(base_size = 12)
 
-ggsave("results/chi2_logp_barplot_mixed.png", p2, width = 9, height = 7, dpi = 300)
+ggsave("results/chi2_logp_barplot_mixed.png", p2, width = 9, height = 4, dpi = 300)
 
 
 saveRDS(raw_pred_delay,  "results/raw_pred_delay.rds")
@@ -339,4 +339,3 @@ saveRDS(raw_pred_base,   "results/raw_pred_base.rds")
 saveRDS(E_t_after_delay, "results/E_t_after_delay.rds")
 saveRDS(E_t_after_base,  "results/E_t_after_base.rds")
 saveRDS(cut_ages,        "results/cut_ages.rds")
-
