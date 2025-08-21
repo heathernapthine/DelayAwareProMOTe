@@ -165,7 +165,7 @@ VB_gaussian_update <- function(d, t, rho, tau, iota, hyperparameters, initial_Cs
   cat("\n")
   
   #perform updates
-  while(param_difference > epsilon && n_steps <70) {
+  while(param_difference > epsilon) {
     
     n_steps <- n_steps + 1
     

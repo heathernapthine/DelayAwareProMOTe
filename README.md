@@ -227,7 +227,9 @@ Expected diagnosis time after `tau` under the **baseline** predictive.
   **Purpose:** Per‑cluster left/right censoring summaries from `d`, `t`, `rho`, `tau`, `iota`.
 - `bimodal_in_mixed.R`  
   **Purpose:** Bimodal‑flag analysis on mixed‑delay dataset; chi‑square early/late vs clusters; MAE on late subgroup.
-- `plot_elbo.R`  
+- `subset_condition_ablation.R`  
+  **Purpose:** Fits the delay-aware model under different prior-variance scalings, then re-evaluates clustering and forward prediction restricted to a chosen subset of conditions (e.g. one family or condition) to test their discriminative signal.
+- `plot_elbo.R` 
   **Purpose:** Compare ELBO trajectories for delay‑aware vs no‑delay models and plot parameter differences against elbo.
 - `plot_risk_profiles.R`  
   **Purpose:** Visualise cluster‑specific trajectories from the delay‑aware posterior.

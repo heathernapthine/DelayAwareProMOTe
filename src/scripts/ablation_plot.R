@@ -39,10 +39,15 @@ pA <- ggplot(tops, aes(x = var_scale)) +
   scale_y_continuous(limits = c(0.6, 1), breaks = seq(0.6, 1, by = 0.05)) +
   scale_x_s +
   labs(x = "Prior variance scale (s)", y = "Cluster recovery (ARI / NMI)",
-       color = NULL,
-       title = "Effect of prior strength on cluster recovery (Dataset 3)") +
+       color = NULL) +
   theme_bw() +
-  theme(legend.position = "top")
+  theme(panel.grid.major.x = element_line(color = "grey90", linetype = "dashed"),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18), 
+    legend.text = element_text(size = 16),
+    legend.title= element_text(size = 20), legend.position = "top")
 
 ggsave(file.path(directory_plots, "figA_prior_scale_vs_cluster_recovery.png"), pA, width = 7, height = 4.5, dpi = 300)
 
@@ -70,9 +75,11 @@ base <- ggplot(shrink, aes(x = factor(var_scale), y = SR_w, fill = family)) +
   scale_fill_manual(values = pal, drop = FALSE) + # keep all keys in legend
   labs(x = "Prior variance scale (s)",
        y = "SR_w (log scale)") +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 16) +
   theme(legend.position = "none",
-        plot.title = element_text(hjust = 0.5))
+        plot.title = element_text(hjust = 0.5),
+  axis.text.x = element_text(size = 16),
+  axis.text.y = element_text(size = 16))
 
 # Three single-family panels
 p_g  <- base %+% filter(shrink, family == "gaussian") + ggtitle("Gaussian")
@@ -80,11 +87,11 @@ p_m2 <- base %+% filter(shrink, family == "mixture2") + ggtitle("Mixture (2)")
 p_u  <- base %+% filter(shrink, family == "uniform")  + ggtitle("Uniform")
 
 # Legend extracted from a plot that contains all families
-p_for_leg <- base + theme(legend.position = "right") +
+p_for_leg <- base + theme(legend.text = element_text(size = 18), legend.title= element_text(size = 22), legend.position = "right") +
   labs(fill = "Delay family")
 leg <- cowplot::get_legend(p_for_leg + geom_boxplot())
 cap_text <- "(SR_w): < 1; posterior variance smaller than prior variance,\n              = 1; posterior variance equals prior variance,\n              > 1; posterior variance larger than prior variance"
-cap <- ggdraw() + draw_text(cap_text, x = 0, y = 1, hjust = 0, vjust = 1, size = 10)
+cap <- ggdraw() + draw_text(cap_text, x = 0, y = 1, hjust = 0.2, vjust = 1, size = 13)
 
 # Stack legend over caption in the spare cell
 leg_cap <- plot_grid(ggdraw(leg), cap, ncol = 1, rel_heights = c(2, 1))

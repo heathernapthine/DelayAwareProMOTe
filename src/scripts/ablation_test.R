@@ -176,8 +176,7 @@ safe_auc <- function(y, p) {
 }
 
 # directory for outputs
-directory <- "src/ablationresultsfifteenth"
-if (!dir.exists(directory)) dir.create(directory, recursive = TRUE)
+directory <- "src/ablationresultstwentieth"
 
 # ONE SETTING (var_scale)
 run_one_setting <- function(var_scale) {

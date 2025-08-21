@@ -12,10 +12,10 @@ library(grid)
 
 
 
-target_cluster <- 1
+target_cluster <- 2
 
 data_rds_path      <- "data/generated_promote_style_mixed_delays.rds"
-posterior_delay_rds<- "src/resultsmixeddata/posterior_val_delay_train.rds"
+posterior_delay_rds<- "src/resultsmixeddatatwelth/posterior_val_delay_train.rds"
 directory            <- "src/clustertrajectoryplots/mixeddata"
 
 # Load data and posterior
@@ -179,9 +179,15 @@ if (length(top_conds) > 0) {
                      y = as.numeric(ConditionName) - 0.25,
                      yend = as.numeric(ConditionName) - 0.25),
                  arrow = arrow(length = unit(0.2, "cm")), color = light_blue, linewidth = 1.1, na.rm = TRUE) +
-    labs(title = paste("Mean Patient-Level Errors by Condition – Cluster", target_cluster),
-         x = "Age (years)", y = "Condition") +
-    theme_classic(base_size = 14) +
+    labs(x = "Age (years)", y = "Condition") +
+    theme_classic(base_size = 16)  +   # bump up base size
+  theme(
+    panel.grid.major.x = element_line(color = "grey90", linetype = "dashed"),
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    axis.title.x = element_text(size = 20),
+    axis.title.y = element_text(size = 20)
+  ) +
     theme(panel.grid.major.x = element_line(color = "grey90", linetype = "dashed")) +
     coord_cartesian(xlim = c(AGE_MIN, AGE_MAX))
 
@@ -233,15 +239,17 @@ if (length(top_conds) > 0) {
     ) +
     scale_fill_manual(values = pal, name = "Condition") +
     scale_color_manual(values = pal, name = "Condition") +
-    labs(
-      title = paste0("Cluster ", target_cluster),
-      x = "Age of Onset", y = "Density"
+    labs(x = "Age of Onset", y = "Density"
     ) +
     coord_cartesian(xlim = c(0, 100)) +
     theme_classic(base_size = 14) +
-    theme(legend.position = "right")
+    theme(panel.grid.major.x = element_line(color = "grey90", linetype = "dashed"),
+    axis.text.x = element_text(size = 38),
+    axis.text.y = element_text(size = 38),
+    axis.title.x = element_text(size = 42),
+    axis.title.y = element_text(size = 42), legend.position = "none")
 
   dir.create(directory, recursive = TRUE, showWarnings = FALSE)
-  ggsave(file.path(directory, sprintf("cluster_%d_onset_hist_lines_by_condition.png", target_cluster)),
+  ggsave(file.path(directory, sprintf("main_cluster_%d_onset_hist_lines_by_condition.png", target_cluster)),
          p_onset_by_cond, width = 10, height = 6, dpi = 300)
 } 

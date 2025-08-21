@@ -235,18 +235,20 @@ p_bubbles <- ggplot(prevalence_df, aes(x = condition, y = cluster)) +
   ) +
   scale_y_discrete(limits = rev(levels(prevalence_df$cluster))) +
   scale_x_discrete(limits = levels(prevalence_df$condition)) +
-  labs(x = "Condition", y = "Cluster", title = "Posterior Disease Presence") +
+  labs(x = "Condition", y = "Cluster") +
   coord_cartesian(clip = "off") +
   (theme_forest() +
      theme(
        panel.background = element_rect(fill = "white", colour = "white"),
        plot.background  = element_rect(fill = "white", colour = "white"),
        text             = element_text(size = 16),
-       legend.title     = element_text(size = 14),
-       legend.text      = element_text(size = 12),
+       legend.title     = element_text(size = 20),
+       legend.text      = element_text(size = 16),
        legend.position  = "left",
-       axis.text.x      = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 9),
-       axis.text.y      = element_text(size = 10),
+       axis.text.x      = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 13),
+       axis.text.y      = element_text(size = 16),
+       axis.title.x = element_text(size = 20),
+       axis.title.y = element_text(size = 20),
        plot.title       = element_text(hjust = 0, face = "bold", size = 18),
        panel.grid.major.x = element_blank(),
        panel.grid.minor   = element_blank()
@@ -269,7 +271,7 @@ p_bar_right <- ggplot(bar_df, aes(y = cluster, x = mass_share, fill = cluster)) 
   scale_fill_manual(values = pal, guide = "none") +
   scale_y_discrete(limits = rev(levels(prevalence_df$cluster))) +
   scale_x_continuous(
-    limits = c(0, 0.25), # cap at 50%
+    limits = c(0, 0.25), # cap at 20%
     labels = scales::label_percent(accuracy = 1),
     breaks = c(0, 0.25, 0.5),
     expand = expansion(mult = c(0, 0.02))
@@ -281,7 +283,7 @@ p_bar_right <- ggplot(bar_df, aes(y = cluster, x = mass_share, fill = cluster)) 
     axis.ticks.y = element_blank(),
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
-    axis.text.x = element_text(size = 9),
+    axis.text.x = element_text(size = 14),
     plot.margin = margin(t = 10, r = 10, b = 10, l = 0)
   )
 

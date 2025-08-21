@@ -40,15 +40,16 @@ p <- ggplot(df, aes(x = iter, y = elbo, colour = model)) +
   geom_line(linewidth = 1.1) +
   scale_color_manual(values = c("Delay-aware" = purple, "No-delay" = light_blue)) +
   labs(
-    title = "ELBO over VB iterations",
     x = "Iteration",
-    y = "Evidence Lower Bound (ELBO)",
+    y = "ELBO",
     colour = NULL
   ) +
-  theme_classic(base_size = 12) +
+  theme_classic(base_size = 20) +
   theme(
     legend.position = "top",
-    plot.title = element_text(face = "bold")
+    axis.text.x = element_text(size = 22),
+    axis.text.y = element_text(size = 22),
+    legend.text = element_text(size = 29)
   )
 
 ggsave("src/plots/fig_elbo_comparison.png", p, width = 8, height = 4.5, units = "in", dpi = 300)
@@ -94,10 +95,13 @@ p <- ggplot(df, aes(iter)) +
                         name = "Parameter difference")
   ) +
   scale_color_manual(values = c("ELBO" = "#bd5bd3", "Param diff" = "#A6CEE3")) +
-  labs(title = "ELBO and Parameter Differences over VB iterations",
-       x = "Iteration", colour = NULL) +
-  theme_classic(base_size = 12) +
-  theme(legend.position = "top",
-        plot.title = element_text(face = "bold"))
+  labs(x = "Iteration", colour = NULL) +
+  theme_classic(base_size = 20) +
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(size = 22),
+    axis.text.y = element_text(size = 22),
+    legend.text = element_text(size = 29)
+  )
 
 ggsave("src/plots/fig_elbo_paramdiff.png", p, width = 8, height = 4, units = "in", dpi = 300)
